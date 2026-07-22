@@ -21,13 +21,13 @@
         <label for="password">Mot de passe local</label>
         <input id="password" name="password" type="password" autocomplete="current-password" minlength="4" required>
 
-        <p class="notice warning">Mode statique : les identifiants ne sont ni envoyés ni vérifiés par un serveur. Cette connexion sert uniquement à protéger l’interface sur cet appareil.</p>
+        <p class="notice warning">Mode statique : les identifiants sont vérifiés localement et ne sont jamais envoyés à un serveur. Cette connexion protège uniquement l’interface sur cet appareil.</p>
         <p id="login-error" class="form-error" role="alert" hidden></p>
         <button class="primary full" type="submit">Entrer dans Nexus</button>
       </form>
     </section>
   </main>
-  <script src="./auth.js"></script>
-  <script src="./login.js"></script>
+  <script src="./auth.js?v=2"></script>
+  <script src="./login.js?v=2"></script>
 </body>
 </html>
