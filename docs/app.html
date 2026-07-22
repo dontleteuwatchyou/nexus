@@ -3,60 +3,57 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Boîte à outils OSINT et audit web statique">
-  <title>Application · Nexus Toolkit</title>
-  <link rel="stylesheet" href="./styles.css">
+  <meta name="description" content="Nexus Web Lab — investigation OSINT et reconnaissance guidée">
+  <title>Web Lab · Nexus Toolkit</title>
+  <link rel="stylesheet" href="./styles.css?v=4">
   <script src="./auth.js?v=3"></script>
   <script>requireSession();</script>
 </head>
-<body>
-  <header class="site-header">
-    <a class="brand" href="./index.html" aria-label="Accueil Nexus Toolkit">◈ NEXUS <span>WEB LAB</span></a>
-    <div class="session-controls">
-      <span id="session-user" class="muted"></span>
-      <button id="logout" class="secondary" type="button">Déconnexion</button>
-    </div>
+<body class="lab-page">
+  <header class="site-header lab-header">
+    <a class="brand" href="./index.html">◈ NEXUS <span>WEB LAB v4</span></a>
+    <div class="session-controls"><span id="session-user" class="muted"></span><button id="logout" class="secondary" type="button">Déconnexion</button></div>
   </header>
 
-  <main class="container">
-    <section class="hero">
-      <p class="eyebrow">INVESTIGATION PUBLIQUE · OBSERVATION UNIQUEMENT</p>
-      <h1>Analyse locale, pivots publics.</h1>
-      <p>Cette édition fonctionne entièrement dans le navigateur. Elle ne scanne pas une cible et ne transmet aucune saisie à Nexus.</p>
-    </section>
+  <main class="lab-shell">
+    <aside class="lab-sidebar">
+      <div class="sidebar-intro"><span class="live-dot"></span><div><b>Workspace local</b><small>Aucune collecte automatique</small></div></div>
+      <p class="sidebar-label">Catégories</p>
+      <button class="category-button active" data-category="osint" type="button"><span>◆</span><div><b>OSINT</b><small>Sources publiques</small></div><em>12</em></button>
+      <button class="category-button" data-category="recon" type="button"><span>⚡</span><div><b>Recon guidée</b><small>Audit autorisé</small></div><em>8</em></button>
+      <p class="sidebar-label">Module</p>
+      <div id="module-list" class="module-list"></div>
+      <div class="sidebar-warning"><b>Cadre légal</b><p>Les contrôles actifs exigent une autorisation explicite. Le Web Lab ne lance aucun exploit.</p></div>
+    </aside>
 
-    <nav class="tabs" aria-label="Espaces de travail">
-      <button class="tab active" type="button" data-panel="osint" aria-selected="true">Investigation OSINT</button>
-      <button class="tab" type="button" data-panel="audit" aria-selected="false">Audit web guidé</button>
-    </nav>
-
-    <section id="osint-panel" class="workspace">
-      <div class="search-row">
-        <label class="sr-only" for="target">Email, pseudo, domaine, IP, téléphone ou nom</label>
-        <input id="target" placeholder="email, pseudo, domaine, IP, téléphone ou nom" maxlength="254">
-        <button id="analyse" class="primary" type="button">Analyser</button>
+    <section class="lab-main">
+      <div class="lab-title-row">
+        <div><p id="module-kicker" class="eyebrow">OSINT · AUTO</p><h1 id="module-title">Investigation automatique</h1><p id="module-description" class="muted">Détecte la cible et prépare les pivots publics pertinents.</p></div>
+        <span class="dev-pill lab-pill"><span></span> Expérimental</span>
       </div>
-      <p class="notice">Nexus détecte le format localement et génère des liens vers des sources publiques. Chaque lien ne contacte le service concerné qu’après votre clic.</p>
-      <div id="osint-status" class="status" aria-live="polite"></div>
-      <div id="osint-results" class="results"></div>
-      <div id="osint-actions" class="actions" hidden></div>
-    </section>
 
-    <section id="audit-panel" class="workspace" hidden>
-      <div class="search-row">
-        <label class="sr-only" for="audit-target">Domaine ou URL publique autorisée</label>
-        <input id="audit-target" placeholder="https://example.com" maxlength="254">
-        <button id="audit" class="primary" type="button">Préparer l’audit</button>
-      </div>
-      <label class="consent"><input id="authorized" type="checkbox"> Je confirme être propriétaire de la cible ou disposer d’une autorisation explicite.</label>
-      <p class="notice warning">GitHub Pages ne peut pas tester DNS, TLS, ports, en-têtes ou CORS sans services tiers. Nexus prépare donc une checklist et des outils de validation manuelle ; aucune requête n’est envoyée automatiquement à la cible.</p>
-      <div id="audit-status" class="status" aria-live="polite"></div>
-      <div id="audit-results" class="results"></div>
-      <div id="audit-actions" class="actions" hidden></div>
+      <section class="command-panel">
+        <div class="target-row"><span class="prompt-mark">$</span><input id="target" aria-label="Cible" placeholder="email, pseudo, domaine, IP, téléphone, nom, wallet ou URL d’image" maxlength="500"><button id="run" class="primary" type="button">Lancer <span>↵</span></button></div>
+        <div class="target-options"><label id="authorization-wrap" hidden><input id="authorized" type="checkbox"> Autorisation explicite confirmée</label><span id="privacy-note">Analyse locale · les sources s’ouvrent uniquement au clic</span></div>
+      </section>
+
+      <div class="quick-targets"><span>Exemples</span><button data-value="torvalds">pseudo</button><button data-value="example.com">domaine</button><button data-value="8.8.8.8">IP</button><button data-value="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa">wallet BTC</button></div>
+
+      <section class="run-summary" id="run-summary" hidden>
+        <div><span class="summary-icon">✓</span><div><b id="summary-title">Analyse prête</b><small id="summary-meta"></small></div></div>
+        <div class="export-group"><button class="secondary export" data-format="json">JSON</button><button class="secondary export" data-format="csv">CSV</button><button class="secondary export" data-format="md">Markdown</button></div>
+      </section>
+
+      <div id="empty-state" class="lab-empty"><div class="radar"><i></i><i></i><i></i><span>◈</span></div><h2>Prêt pour une investigation</h2><p>Choisissez un module, saisissez une cible et Nexus organisera les sources utiles sans envoyer de requête automatique.</p></div>
+      <div id="results" class="lab-results" aria-live="polite"></div>
+
+      <section class="capability-strip">
+        <article><span>◆</span><div><b>Détection locale</b><small>8 types de cibles</small></div></article>
+        <article><span>◇</span><div><b>Pivots publics</b><small>50+ sources organisées</small></div></article>
+        <article><span>⇩</span><div><b>Rapports</b><small>JSON · CSV · Markdown</small></div></article>
+      </section>
     </section>
   </main>
-
-  <footer>Utilisez uniquement des informations publiques et des cibles légalement autorisées.</footer>
-  <script src="./app.js"></script>
+  <script src="./app.js?v=4"></script>
 </body>
 </html>
