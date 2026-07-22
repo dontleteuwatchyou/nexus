@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Connexion locale à Nexus Web">
+  <title>Connexion · Nexus Web</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="login-page">
+  <main class="login-shell">
+    <section class="login-card" aria-labelledby="login-title">
+      <p class="eyebrow">NEXUS WEB · STATIC EDITION</p>
+      <h1 id="login-title">Connexion</h1>
+      <p class="muted">Cette édition GitHub Pages conserve la session uniquement dans votre navigateur.</p>
+
+      <form id="login-form">
+        <label for="username">Identifiant</label>
+        <input id="username" name="username" autocomplete="username" maxlength="80" required autofocus>
+
+        <label for="password">Mot de passe local</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" minlength="4" required>
+
+        <p class="notice warning">Mode statique : les identifiants ne sont ni envoyés ni vérifiés par un serveur. Cette connexion sert uniquement à protéger l’interface sur cet appareil.</p>
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+        <button class="primary full" type="submit">Entrer dans Nexus</button>
+      </form>
+    </section>
+  </main>
+  <script src="./auth.js"></script>
+  <script src="./login.js"></script>
+</body>
+</html>
