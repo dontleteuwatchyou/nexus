@@ -6,6 +6,7 @@ document.querySelector("#logout").addEventListener("click", () => { clearSession
 
 const $ = (selector) => document.querySelector(selector);
 const state = { category: "osint", module: "auto", report: null };
+const HISTORY_KEY = "nexus_lab_history_v1";
 
 const MODULES = {
   osint: [
@@ -57,7 +58,11 @@ const DETAILS = {
   external: ["RECON · EXTERNAL", "Validateurs externes", "Services spécialisés déclenchés uniquement au clic."]
 };
 
-function escapeCsv(value) { return `"${String(value ?? "").replaceAll('"', '""')}"`; }
+function escapeCsv(value) {
+  let text = String(value ?? "");
+  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replaceAll('"', '""')}"`;
+}
 function encode(value) { return encodeURIComponent(value); }
 function finding(group, label, value, url = "", note = "", confidence = "manual") { return { group, label, value, url, note, confidence }; }
 function httpsUrl(value) { try { const url = new URL(value); return url.protocol === "https:" ? url.href : ""; } catch (_) { return ""; } }
@@ -73,13 +78,78 @@ function detectType(value) {
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "email";
   if (/^0x[a-f0-9]{40}$/i.test(value)) return "crypto-eth";
   if (/^(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(value)) return "crypto-btc";
-  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(value) || (value.includes(":") && /^[0-9a-f:]+$/i.test(value))) return "ip";
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(value)) {
+    if (value.split(".").every(part => Number(part) <= 255)) return "ip";
+    return "unknown";
+  }
+  if (value.includes(":") && /^[0-9a-f:]+$/i.test(value)) return "ip";
   const digits = value.replace(/\D/g, "");
   if (/^\+?[\d\s()./-]+$/.test(value) && digits.length >= 7 && digits.length <= 15) return "phone";
   if (/^https?:\/\//i.test(value)) return /\.(?:png|jpe?g|gif|webp|bmp)(?:\?|$)/i.test(value) ? "image" : "url";
   if (!value.includes(" ") && /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(value)) return "domain";
   if (/\s/.test(value)) return "name";
   return "username";
+}
+
+async function fetchJson(url, timeout = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } finally { clearTimeout(timer); }
+}
+
+async function liveDns(host) {
+  const types = ["A", "AAAA", "MX", "TXT"];
+  const settled = await Promise.allSettled(types.map(type => fetchJson(`https://dns.google/resolve?name=${encode(host)}&type=${type}`)));
+  const rows = [];
+  settled.forEach((result, index) => {
+    if (result.status !== "fulfilled") return;
+    const answers = (result.value.Answer || []).map(answer => String(answer.data)).slice(0, 6);
+    if (answers.length) rows.push(finding("Données en direct", `DNS ${types[index]}`, answers.join(" · ").slice(0, 700), "", "Réponse Google Public DNS reçue maintenant.", "live"));
+  });
+  return rows;
+}
+
+async function liveGithub(target) {
+  const user = target.replace(/^@/, "");
+  const data = await fetchJson(`https://api.github.com/users/${encode(user)}`);
+  return [
+    finding("Données en direct", "Profil GitHub", data.login || user, data.html_url || `https://github.com/${encode(user)}`, "Correspondance exacte via l’API GitHub.", "live"),
+    finding("Données en direct", "Nom déclaré", data.name || "non renseigné", "", "Champ public du profil.", "live"),
+    finding("Données en direct", "Dépôts / abonnés", `${data.public_repos || 0} dépôts · ${data.followers || 0} abonnés`, "", "Compteurs publics actuels.", "live")
+  ];
+}
+
+async function liveIp(target) {
+  const data = await fetchJson(`https://ipwho.is/${encode(target)}`);
+  if (data.success === false) throw new Error(data.message || "IP indisponible");
+  return [finding("Données en direct", "Réseau", `${data.connection?.isp || "inconnu"} · ASN ${data.connection?.asn || "?"}`, "", "Géolocalisation approximative fournie par un tiers.", "live"),
+    finding("Données en direct", "Zone approximative", [data.city, data.region, data.country].filter(Boolean).join(", ") || "inconnue", "", "Ne permet pas de localiser une personne.", "live")];
+}
+
+async function liveBitcoin(target) {
+  const data = await fetchJson(`https://mempool.space/api/address/${encode(target)}`);
+  const funded = Number(data.chain_stats?.funded_txo_sum || 0), spent = Number(data.chain_stats?.spent_txo_sum || 0);
+  return [finding("Données en direct", "Solde confirmé", `${((funded - spent) / 100000000).toFixed(8)} BTC`, `https://mempool.space/address/${encode(target)}`, "Calculé depuis les statistiques publiques de la chaîne.", "live"),
+    finding("Données en direct", "Transactions financées", String(data.chain_stats?.funded_txo_count || 0), "", "Donnée on-chain publique.", "live")];
+}
+
+async function liveEnrichment(target, detected, module) {
+  try {
+    if (detected === "ip" && !target.includes(":")) return await liveIp(target);
+    if (detected === "crypto-btc") return await liveBitcoin(target);
+    if (module === "github" || detected === "username") return await liveGithub(target);
+    if (["domain", "url", "email"].includes(detected)) {
+      const host = detected === "email" ? target.split("@")[1] : hostOf(target);
+      return await liveDns(host);
+    }
+    return [finding("Données en direct", "Information", "Aucun collecteur passif compatible avec ce type", "", "Les pivots manuels restent disponibles.", "low")];
+  } catch (error) {
+    return [finding("Données en direct", "Source indisponible", error.name === "AbortError" ? "délai dépassé" : error.message, "", "Une limitation CORS, réseau ou de quota peut être temporaire.", "low")];
+  }
 }
 
 function hostOf(value) {
@@ -251,6 +321,8 @@ function selectModule(id) {
   document.querySelectorAll(".module-button").forEach((button, index) => button.classList.toggle("active", MODULES[state.category][index]?.[0] === id));
   const [kicker, title, description] = DETAILS[id]; $("#module-kicker").textContent = kicker; $("#module-title").textContent = title; $("#module-description").textContent = description;
   $("#authorization-wrap").hidden = state.category !== "recon";
+  $("#live-wrap").hidden = state.category === "recon";
+  $("#privacy-note").textContent = state.category === "recon" ? "Planification locale · les outils externes s’ouvrent uniquement au clic" : ($("#live-passive").checked ? "Mode passif · la cible sera transmise aux API publiques nécessaires" : "Mode local · aucune cible transmise automatiquement");
 }
 
 function renderResults(rows) {
@@ -264,6 +336,7 @@ function renderResults(rows) {
       const row = document.createElement("article"); row.className = "result-item";
       const marker = document.createElement("span"); marker.className = `result-marker ${item.confidence}`; marker.textContent = item.url ? "↗" : "·";
       const content = document.createElement("div"); const title = document.createElement("b"); title.textContent = item.label;
+      if (item.confidence === "live") { const badge = document.createElement("span"); badge.className = "live-badge"; badge.textContent = "LIVE"; title.append(" ", badge); }
       const value = item.url ? document.createElement("a") : document.createElement("p"); value.textContent = item.value;
       if (item.url) { value.href = httpsUrl(item.url); value.target = "_blank"; value.rel = "noopener noreferrer"; }
       content.append(title, value); if (item.note) { const note = document.createElement("small"); note.textContent = item.note; content.append(note); }
@@ -273,19 +346,51 @@ function renderResults(rows) {
   }
 }
 
-function run() {
+function readHistory() {
+  try { const rows = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); return Array.isArray(rows) ? rows.slice(0, 12) : []; }
+  catch (_) { return []; }
+}
+
+function saveHistory(report) {
+  const entry = { target: report.target, category: report.category, module: report.module, detected: report.detected, date: report.generatedAt };
+  const rows = [entry, ...readHistory().filter(row => !(row.target === entry.target && row.module === entry.module))].slice(0, 12);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(rows)); renderHistory();
+}
+
+function renderHistory() {
+  const container = $("#history-list"), rows = readHistory(); container.replaceChildren();
+  if (!rows.length) { const empty = document.createElement("p"); empty.className = "history-empty"; empty.textContent = "Aucune analyse récente"; container.append(empty); return; }
+  rows.forEach(row => {
+    const button = document.createElement("button"); button.type = "button";
+    const name = document.createElement("b"); name.textContent = row.target;
+    const meta = document.createElement("small"); meta.textContent = `${row.category} · ${row.module}`;
+    button.append(name, meta); button.addEventListener("click", () => {
+      state.category = row.category; state.module = row.module;
+      document.querySelectorAll(".category-button").forEach(item => item.classList.toggle("active", item.dataset.category === state.category));
+      renderModules(); selectModule(state.module); $("#target").value = row.target;
+    }); container.append(button);
+  });
+}
+
+async function run() {
   try {
     const target = cleanTarget($("#target").value), detected = detectType(target);
+    if (detected === "unknown") throw new Error("Le format de la cible n’est pas valide.");
     if (state.category === "recon" && !$("#authorized").checked) throw new Error("Confirmez votre autorisation explicite avant de préparer la reconnaissance.");
-    const findings = state.category === "recon" ? reconFindings(target, state.module) : osintFindings(target, state.module, detected);
+    const button = $("#run"); button.disabled = true; button.classList.add("running"); button.firstChild.textContent = "Analyse… ";
+    let findings = state.category === "recon" ? reconFindings(target, state.module) : osintFindings(target, state.module, detected);
+    if ($("#live-passive").checked && state.category === "osint") findings = [...await liveEnrichment(target, detected, state.module), ...findings];
     state.report = { target, detected, category: state.category, module: state.module, generatedAt: new Date().toISOString(), findings };
+    saveHistory(state.report);
     $("#empty-state").hidden = true; $("#run-summary").hidden = false;
     $("#summary-title").textContent = `${findings.length} pivot${findings.length > 1 ? "s" : ""} préparé${findings.length > 1 ? "s" : ""}`;
-    $("#summary-meta").textContent = `Type ${detected} · aucune requête automatique`;
+    $("#summary-meta").textContent = `Type ${detected} · ${$("#live-passive").checked ? "enrichissement passif demandé" : "mode local"}`;
     renderResults(findings);
   } catch (error) {
     $("#empty-state").hidden = false; $("#empty-state h2").textContent = "Impossible de préparer l’analyse"; $("#empty-state p").textContent = error.message;
     $("#results").replaceChildren(); $("#run-summary").hidden = true;
+  } finally {
+    const button = $("#run"); button.disabled = false; button.classList.remove("running"); button.firstChild.textContent = "Lancer ";
   }
 }
 
@@ -305,4 +410,12 @@ document.querySelectorAll(".category-button").forEach(button => button.addEventL
 $("#run").addEventListener("click", run); $("#target").addEventListener("keydown", event => { if (event.key === "Enter") run(); });
 document.querySelectorAll(".quick-targets button").forEach(button => button.addEventListener("click", () => { $("#target").value = button.dataset.value; run(); }));
 document.querySelectorAll(".export").forEach(button => button.addEventListener("click", () => download(button.dataset.format)));
-renderModules(); selectModule("auto");
+$("#copy-report").addEventListener("click", async () => {
+  if (!state.report) return;
+  const text = state.report.findings.map(row => `[${row.group}] ${row.label}: ${row.value}${row.url ? ` — ${row.url}` : ""}`).join("\n");
+  try { await navigator.clipboard.writeText(text); $("#copy-report").textContent = "Copié ✓"; setTimeout(() => $("#copy-report").textContent = "Copier", 1400); }
+  catch (_) { $("#copy-report").textContent = "Échec"; }
+});
+$("#clear-history").addEventListener("click", () => { localStorage.removeItem(HISTORY_KEY); renderHistory(); });
+$("#live-passive").addEventListener("change", event => { $("#privacy-note").textContent = event.target.checked ? "Mode passif · la cible sera transmise aux API publiques nécessaires" : "Mode local · aucune cible transmise automatiquement"; });
+renderModules(); selectModule("auto"); renderHistory();

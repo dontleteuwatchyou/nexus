@@ -14,6 +14,8 @@ Le moteur Nexus complet reste une application locale Python/CLI/TUI. Ce dépôt 
 - le bouton **Déconnexion** efface la session locale ;
 - l’espace OSINT détecte localement le type de cible et prépare des liens vers des sources publiques ;
 - l’espace d’audit prépare une checklist et des liens de validation manuelle ;
+- un enrichissement passif optionnel peut interroger Google Public DNS, GitHub, IPWhois ou mempool.space selon le type de cible ;
+- l’historique des analyses est conservé uniquement dans `localStorage` et peut être effacé depuis l’interface ;
 - les rapports JSON, CSV et Markdown sont produits directement dans le navigateur.
 
 Aucune cible saisie n’est transmise à un serveur Nexus. Un service externe reçoit la cible uniquement lorsque l’utilisateur clique explicitement sur son lien.
@@ -78,7 +80,9 @@ https://VOTRE-COMPTE.github.io/VOTRE-DEPOT/login.html
 
 ## Connexion
 
-Cette version accepte n’importe quel identifiant non vide et un mot de passe local d’au moins quatre caractères. Le mot de passe n’est ni stocké ni envoyé : seule une session contenant le nom d’utilisateur et sa date de création est enregistrée dans `localStorage`.
+Cette version accepte uniquement les comptes explicitement autorisés dans `login.js`. Les mots de passe ne sont ni stockés en clair ni envoyés : leur empreinte SHA-256 est comparée localement, puis seule une session contenant le nom d’utilisateur et sa date de création est enregistrée dans `localStorage`.
+
+Cette protection reste simulée : les empreintes et toute la logique JavaScript sont publiques sur GitHub Pages. Elle ne doit protéger aucune donnée sensible.
 
 Pour supprimer manuellement la session depuis la console du navigateur :
 
