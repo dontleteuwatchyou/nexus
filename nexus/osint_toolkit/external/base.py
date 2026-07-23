@@ -10,7 +10,7 @@ installed and tell the user how to install it if not.
 from __future__ import annotations
 
 import asyncio
-import importlib
+import importlib.util
 import os
 import shutil
 import sys
