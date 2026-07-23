@@ -27,6 +27,9 @@ EOF
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON="${PYTHON:-python3}"
+VENV="$DIR/.venv"
+BIN_DIR="${NEXUS_BIN_DIR:-$HOME/.local/bin}"
+PIP_FLAGS=""
 
 # ── Python check ──
 echo -e "${CYAN}[1/4]${RESET} Checking Python..."
@@ -53,15 +56,15 @@ for cmd in dig whois; do
     fi
 done
 
-# ── Python deps ──
-echo -e "${CYAN}[3/4]${RESET} Installing Python dependencies..."
-PIP_FLAGS=""
-if "$PYTHON" -m pip install --help 2>&1 | grep -q "break-system-packages"; then
-    PIP_FLAGS="--break-system-packages"
+# ── Isolated Python environment + package ──
+echo -e "${CYAN}[3/4]${RESET} Installing Nexus in an isolated environment..."
+if [ ! -x "$VENV/bin/python" ]; then
+    "$PYTHON" -m venv "$VENV"
 fi
-"$PYTHON" -m pip install --quiet --upgrade $PIP_FLAGS -r "$DIR/requirements.txt" \
-    || "$PYTHON" -m pip install --quiet --upgrade -r "$DIR/requirements.txt"
-echo -e "  ${GREEN}✓${RESET} Dependencies installed"
+PYTHON="$VENV/bin/python"
+"$PYTHON" -m pip install --quiet --upgrade pip setuptools wheel
+"$PYTHON" -m pip install --quiet --editable "$DIR"
+echo -e "  ${GREEN}✓${RESET} Nexus and dependencies installed in $VENV"
 
 # ── Optional: external OSINT tools ──
 if [ "${1:-}" = "--with-tools" ]; then
@@ -139,34 +142,22 @@ if [ "${1:-}" = "--with-tools" ]; then
     echo
 fi
 
-# ── Launcher script ──
-echo -e "${CYAN}[4/4]${RESET} Installing launcher..."
-LAUNCHER="/usr/local/bin/nexus"
-LAUNCHER_CONTENT="#!/usr/bin/env bash
-cd '$DIR' && exec '$PYTHON' -m osint_toolkit \"\$@\"
-"
-PRIV_CMD=""
-for cmd in pkexec sudo doas; do
-    if command -v "$cmd" >/dev/null 2>&1; then
-        PRIV_CMD="$cmd"
-        break
-    fi
-done
-if [ -n "$PRIV_CMD" ]; then
-    echo "$LAUNCHER_CONTENT" | $PRIV_CMD tee "$LAUNCHER" >/dev/null 2>&1 && $PRIV_CMD chmod +x "$LAUNCHER" 2>/dev/null
-fi
-if [ -x "$LAUNCHER" ]; then
-    echo -e "  ${GREEN}✓${RESET} Command ${PURPLE}osint${RESET} installed to ${LAUNCHER} (using $PRIV_CMD)"
-    LAUNCH_HINT="nexus"
-else
-    echo -e "  ${YELLOW}!${RESET} Privileged command not available — use: ${PURPLE}python3 -m osint_toolkit${RESET}"
-    LAUNCH_HINT="python3 -m osint_toolkit"
-fi
+# ── User launchers ──
+echo -e "${CYAN}[4/4]${RESET} Installing launcher symlinks..."
+mkdir -p "$BIN_DIR"
+ln -sfn "$VENV/bin/nexus" "$BIN_DIR/nexus"
+ln -sfn "$VENV/bin/osint" "$BIN_DIR/osint"
+echo -e "  ${GREEN}✓${RESET} nexus → $VENV/bin/nexus"
+echo -e "  ${GREEN}✓${RESET} osint → $VENV/bin/osint"
+LAUNCH_HINT="$BIN_DIR/nexus"
 
-# Also create osint alias for backward compatibility
-if [ -x "$LAUNCHER" ] && [ ! -f "/usr/local/bin/osint" ]; then
-    $PRIV_CMD ln -sf "$LAUNCHER" "/usr/local/bin/osint" 2>/dev/null
-fi
+case ":$PATH:" in
+    *":$BIN_DIR:"*) ;;
+    *)
+        echo -e "  ${YELLOW}!${RESET} $BIN_DIR is not currently in PATH"
+        echo -e "    ${DIM}add this to your shell profile: export PATH=\"\$HOME/.local/bin:\$PATH\"${RESET}"
+        ;;
+esac
 
 mkdir -p "$HOME/.osint-toolkit/output"
 
