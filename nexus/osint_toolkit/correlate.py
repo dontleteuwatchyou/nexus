@@ -15,6 +15,7 @@ from typing import Any, Awaitable, Callable
 
 from .models import ScanResult
 from .modules import (breach as osint_breach, crypto as osint_crypto,
+                       discord as osint_discord,
                        domain as osint_domain, email as osint_email,
                        github as osint_github, image as osint_image,
                        ip as osint_ip, phone as osint_phone,
@@ -60,6 +61,7 @@ OSINT_MODULES: dict[str, ScanFn] = {
     "social":    osint_social.scan,
     "breach":    osint_breach.scan,
     "github":    osint_github.scan,
+    "discord":   osint_discord.scan,
     "image":     osint_image.scan,
     "crypto":    osint_crypto.scan,
 }
@@ -78,6 +80,9 @@ OSINT_TARGET_TYPES: dict[str, set[str]] = {
     "social":   {"username", "name"},
     "breach":   {"email", "domain", "username"},
     "github":   {"username"},
+    # Discord is explicit-only: generic usernames should not trigger service-
+    # specific lookups during an unattended full scan.
+    "discord":  set(),
     # image is explicit-only (`-m image <image-url>`); empty set keeps it out
     # of --fullscan, where reverse-image links on a website URL are just noise.
     "image":    set(),

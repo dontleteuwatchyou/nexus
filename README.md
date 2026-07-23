@@ -31,8 +31,8 @@ son compagnon web statique.
 
 Le moteur complet fonctionne en Python 3.10+ et fournit :
 
-- 12 modules OSINT : email, pseudo, domaine, IP, téléphone, web, social,
-  fuites, GitHub, image et crypto ;
+- 13 modules OSINT : email, pseudo, domaine, IP, téléphone, web, social,
+  fuites, GitHub, Discord, image et crypto ;
 - 13 modules de reconnaissance : ports, sous-domaines, TLS, CORS, en-têtes,
   empreintes, répertoires, JavaScript, GraphQL, Spring et cloud ;
 - environ 80 adaptateurs d’outils externes ;
@@ -73,7 +73,7 @@ Le Web Lab est une version statique compatible GitHub Pages. Il propose :
 - détection locale de cible et plus de 50 pivots publics ;
 - enrichissement passif optionnel via Google Public DNS, GitHub, IPWhois et
   mempool.space ;
-- 12 parcours OSINT et 8 parcours de reconnaissance guidée ;
+- 13 parcours OSINT et 8 parcours de reconnaissance guidée ;
 - historique local et exports JSON, CSV et Markdown.
 
 Il ne peut pas exécuter Nmap, des sockets TCP, Python ou les outils système du
