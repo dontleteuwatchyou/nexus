@@ -13,6 +13,7 @@ venv/
 build/
 dist/
 node_modules/
+web/
 .DS_Store
 *.log
 output/
