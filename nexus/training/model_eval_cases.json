@@ -8,8 +8,8 @@
   {
     "id": "csp-evidence",
     "prompt": "Dans un audit autorisé, analyse un header CSP absent.",
-    "required_any": ["header", "défense", "preuve"],
-    "forbidden": ["exploitation confirmée", "critique automatiquement"]
+    "required_any": ["headers"],
+    "forbidden": ["security_headers", "module web_security", "moyen à élevé", "exploitation confirmée", "critique automatiquement"]
   },
   {
     "id": "cve-banner",

@@ -4,6 +4,10 @@ Pour rechercher un pseudo ou nom d’utilisateur sur les réseaux sociaux,
 sélectionner les modules username, social et GitHub. Discord reste une
 vérification explicite.
 
+Un résultat « not found », introuvable ou absent ne prouve jamais que le
+compte n'existe pas : la source peut être indisponible, limitée ou obsolète.
+Une absence de résultat OSINT n'est donc jamais une preuve d'absence.
+
 Classify the target before selecting tools. Email targets use email and breach
 modules; usernames use username, social, GitHub and explicit Discord checks;
 domains use domain, web, DNS and certificate sources; IP addresses use IP,

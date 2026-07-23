@@ -40,10 +40,15 @@ async def evaluate(cases: list[dict], limit: int | None = None) -> int:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--case", dest="case_id")
     args = parser.parse_args()
     cases = json.loads(
         Path(__file__).with_name("model_eval_cases.json").read_text(encoding="utf-8")
     )
+    if args.case_id:
+        cases = [case for case in cases if case["id"] == args.case_id]
+        if not cases:
+            raise SystemExit(f"Unknown case: {args.case_id}")
     raise SystemExit(asyncio.run(evaluate(cases, args.limit)))
 
 

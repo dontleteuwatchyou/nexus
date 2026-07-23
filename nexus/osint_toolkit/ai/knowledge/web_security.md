@@ -1,5 +1,10 @@
 # Web security assessment
 
+Dans Nexus, l'absence de Content-Security-Policy se vérifie avec le module
+exact `headers`. Il n'existe pas de module `security_headers` ni de module
+`web_security`. Une CSP absente est un manque de défense, pas une vulnérabilité
+exploitée ou une sévérité automatiquement critique.
+
 Begin with fingerprint, headers, TLS, DNS security and JavaScript inventory.
 Active discovery such as directory enumeration, port scans, fuzzing or
 vulnerability templates must stay inside the agreed scope.
