@@ -16,5 +16,9 @@ Le dossier `docs/` à la racine est la copie publiée par GitHub Pages. Toute
 modification fonctionnelle de `web/` doit être répercutée dans `docs/` avant le
 déploiement.
 
+Le Web Lab contient aussi une catégorie Discord dédiée. Son checker transmet
+explicitement le username à Discord et affiche le statut pris/disponible
+retourné au moment de la requête.
+
 La connexion est uniquement une barrière d’interface côté navigateur. Elle ne
 doit pas protéger de données sensibles.
