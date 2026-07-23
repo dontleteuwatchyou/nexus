@@ -22,16 +22,11 @@ from .correlate import (PENTEST_TARGET_TYPES, detect_target_type, scan_chained,
 from .external import find_tool
 from .models import ScanResult
 
-# Expressions pour detecter les cibles OSINT directement (fallback si l'IA refuse)
+# Expressions pour détecter les cibles OSINT directement
 RE_EMAIL = re.compile(r'[\w\.-]+@[\w\.-]+\.\w{2,}')
 RE_URL   = re.compile(r'https?://[^\s]+')
 RE_IP    = re.compile(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b')
 RE_DOMAIN = re.compile(r'\b[\w\.-]+\.[a-z]{2,}\b')
-RE_REFUSAL = re.compile(
-    r"(je ne peux pas|je n'?ai pas|désolé|désolée|cannot|je ne suis pas|"
-    r"doxxing|surveillance|refuse|éthique|illégal|illégal|"
-    r"je ne peux t'aider|je ne peux pas vous aider"
-    r"|I can't|I don't have|I cannot|I'm not able|je ne peux pas vous aider)", re.IGNORECASE)
 RE_ACTIVE_INTENT = re.compile(
     r"\b(pentest|audit(?:er)?|scan actif|vuln(?:érabilité|erabilite)?|explo(?:it|iter))\b",
     re.IGNORECASE,
@@ -901,7 +896,7 @@ class OsintApp(App):
         "  [dim]>[/] scan email test@example.com\n"
         "  [dim]>[/] trouve infos sur https://tiktok.com/@user\n"
         "  [dim]>[/] check les pseudos kaz et nokeh\n\n"
-        "[#737373]Si l'IA refuse, le scan direct prend le relais.[/]"
+        "[#737373]En cas de coupure du modèle, Nexus AI Core prend le relais.[/]"
     )
 
     def _chat_render(self, messages: list[dict]) -> str:
@@ -1150,10 +1145,6 @@ class OsintApp(App):
                     response += (
                         f"\n\n[#737373]... tronque ({len(lines)} lignes)[/]"
                     )
-
-            is_refusal = bool(RE_REFUSAL.search(response[:200]))
-            if is_refusal:
-                response = "[dim]Assistant non disponible[/dim]"
 
         self._chat_history.append({"role": "assistant", "content": response})
         wrapper.update(self._chat_render(self._chat_history))
