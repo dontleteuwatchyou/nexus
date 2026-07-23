@@ -2,7 +2,9 @@ services:
   nexus-api:
     build:
       context: ./nexus
-    env_file: .env
+    env_file:
+      - .env
+      - .env.users
     restart: unless-stopped
     expose:
       - "8000"

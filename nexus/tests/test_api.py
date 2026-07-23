@@ -2,7 +2,13 @@
 
 from fastapi.testclient import TestClient
 
-from osint_toolkit.api import SlidingWindowLimiter, _sign_session, _verify_session, app
+from osint_toolkit.api import (
+    SlidingWindowLimiter,
+    _login_credentials,
+    _sign_session,
+    _verify_session,
+    app,
+)
 
 
 def test_signed_session_roundtrip_and_expiry():
@@ -24,6 +30,21 @@ def test_sliding_window_limiter():
     assert limiter.allow("client", now=1)
     assert not limiter.allow("client", now=2)
     assert limiter.allow("client", now=11)
+
+
+def test_additional_login_credentials(monkeypatch):
+    monkeypatch.setenv("NEXUS_ADMIN_USER", "admin")
+    monkeypatch.setenv("NEXUS_ADMIN_PASSWORD", "admin-password")
+    monkeypatch.setenv(
+        "NEXUS_ADDITIONAL_USERS",
+        '{"sam":"sam fefe","4wmk":"4wmkntm"}',
+    )
+
+    assert _login_credentials() == {
+        "admin": "admin-password",
+        "sam": "sam fefe",
+        "4wmk": "4wmkntm",
+    }
 
 
 def test_health_and_authenticated_session(monkeypatch):

@@ -41,6 +41,31 @@ def _required_env(name: str) -> str:
     return value
 
 
+def _login_credentials() -> dict[str, str]:
+    credentials = {
+        _required_env("NEXUS_ADMIN_USER"): _required_env("NEXUS_ADMIN_PASSWORD")
+    }
+    raw = os.getenv("NEXUS_ADDITIONAL_USERS", "").strip()
+    if not raw:
+        return credentials
+    try:
+        additional = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("NEXUS_ADDITIONAL_USERS must be valid JSON") from exc
+    if not isinstance(additional, dict) or not all(
+        isinstance(user, str)
+        and user
+        and isinstance(password, str)
+        and password
+        for user, password in additional.items()
+    ):
+        raise RuntimeError(
+            "NEXUS_ADDITIONAL_USERS must be a JSON object of username/password pairs"
+        )
+    credentials.update(additional)
+    return credentials
+
+
 def _b64encode(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).decode().rstrip("=")
 
@@ -98,7 +123,7 @@ class SlidingWindowLimiter:
 
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=80)
-    password: str = Field(min_length=8, max_length=256)
+    password: str = Field(min_length=1, max_length=256)
 
 
 class ScanRequest(BaseModel):
@@ -161,14 +186,19 @@ async def login(payload: LoginRequest, request: Request, response: Response) -> 
     if not login_limiter.allow(key):
         raise HTTPException(status_code=429, detail="Too many login attempts")
 
-    configured_user = _required_env("NEXUS_ADMIN_USER")
-    configured_password = _required_env("NEXUS_ADMIN_PASSWORD")
-    user_ok = hmac.compare_digest(payload.username, configured_user)
-    password_ok = hmac.compare_digest(payload.password, configured_password)
-    if not (user_ok and password_ok):
+    matched_user = next(
+        (
+            user
+            for user, password in _login_credentials().items()
+            if hmac.compare_digest(payload.username, user)
+            and hmac.compare_digest(payload.password, password)
+        ),
+        None,
+    )
+    if matched_user is None:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = _sign_session(configured_user, _required_env("NEXUS_SESSION_SECRET"))
+    token = _sign_session(matched_user, _required_env("NEXUS_SESSION_SECRET"))
     response.set_cookie(
         SESSION_COOKIE,
         token,
@@ -178,7 +208,7 @@ async def login(payload: LoginRequest, request: Request, response: Response) -> 
         samesite="strict",
         path="/",
     )
-    return {"user": configured_user}
+    return {"user": matched_user}
 
 
 @app.post("/api/auth/logout")
