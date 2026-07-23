@@ -85,14 +85,14 @@ class NexusAI:
     def reset(self) -> None:
         self.history.clear()
 
-    async def answer(self, message: str) -> str:
+    async def answer(self, message: str, runtime_context: str | None = None) -> str:
         message = message.strip()
         if not message:
             return "Écris une question ou une cible à analyser."
 
         if self.config.enabled:
             try:
-                answer = await self._local_completion(message)
+                answer = await self._local_completion(message, runtime_context)
                 if answer:
                     self._remember(message, answer)
                     return answer
@@ -103,13 +103,21 @@ class NexusAI:
         self._remember(message, answer)
         return answer
 
-    async def _local_completion(self, message: str) -> str:
+    async def _local_completion(
+        self, message: str, runtime_context: str | None = None
+    ) -> str:
         context = self.knowledge.context(message)
         system = SYSTEM_PROMPT
         if context:
             system += (
                 "\n\nContexte documentaire Nexus à utiliser avec prudence. "
                 "Cite le nom de la source et n'invente rien au-delà :\n" + context
+            )
+        if runtime_context:
+            system += (
+                "\n\nRésultats produits à l'instant par les outils Nexus. "
+                "Fais-en une synthèse utile, indique les erreurs et n'ajoute aucun "
+                "fait absent de ces résultats :\n" + runtime_context
             )
         messages = [{"role": "system", "content": system}]
         messages.extend(self.history[-12:])

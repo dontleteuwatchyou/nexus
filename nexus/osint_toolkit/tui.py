@@ -31,6 +31,12 @@ RE_ACTIVE_INTENT = re.compile(
     r"\b(pentest|audit(?:er)?|scan actif|vuln(?:érabilité|erabilite)?|explo(?:it|iter))\b",
     re.IGNORECASE,
 )
+RE_SCAN_INTENT = re.compile(
+    r"\b(scan(?:ne|ner)?|analyse(?:r)?|recherche(?:r)?|cherche(?:r)?|"
+    r"trouve(?:r)?|check(?:er)?|vérifie(?:r)?|verifie(?:r)?|enqu[eê]te|"
+    r"recon|osint|pentest|audit(?:e|er)?)\b",
+    re.IGNORECASE,
+)
 RE_AUTHORIZATION = re.compile(
     r"\b(j['’ ]autorise|autorisé|autorisee|m['’ ]appartient|mon (?:site|lab|réseau|reseau)|"
     r"permission|scope autorisé|scope autorise)\b",
@@ -60,6 +66,15 @@ RE_APPELLE = re.compile(r'(?:surnom|pseudo|appel(?:le|lé|er|lait)?)[:\s]+(\w[\w
 
 OUTPUT_DIR = Path.home() / ".osint-toolkit" / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _should_run_scan(msg: str, targets: list[tuple[str, str]]) -> bool:
+    """Only turn chat into an action when the user clearly requests one."""
+    if not targets:
+        return False
+    stripped = msg.strip().rstrip(".,;:!?")
+    target_only = any(stripped.casefold() == target.casefold() for target, _ in targets)
+    return target_only or bool(RE_SCAN_INTENT.search(msg))
 
 
 # Items per category. (key, label, description)
@@ -922,10 +937,12 @@ class OsintApp(App):
             out.append("[#2a2a2a]─[/]" * 40)
         return "\n".join(out) + "\n"
 
-    async def _run_nexus_ai(self, msg: str) -> str:
+    async def _run_nexus_ai(
+        self, msg: str, runtime_context: str | None = None
+    ) -> str:
         if not hasattr(self, "_nexus_ai"):
             self._nexus_ai = NexusAI()
-        return await self._nexus_ai.answer(msg)
+        return await self._nexus_ai.answer(msg, runtime_context)
 
     def _detect_targets(self, msg: str) -> list[tuple[str, str]]:
         """Detect OSINT targets in a message. Returns [(target, type), ...]."""
@@ -1008,6 +1025,24 @@ class OsintApp(App):
             )
         return "\n".join(out)
 
+    @staticmethod
+    def _scan_context(results: dict[str, ScanResult]) -> str:
+        """Compact, plain-text evidence passed to the local model."""
+        lines: list[str] = []
+        for key, result in results.items():
+            lines.append(f"[{key}]")
+            for finding in result.findings[:12]:
+                value = str(finding.value).replace("\n", " ")[:300]
+                lines.append(
+                    f"- {finding.source} | {finding.label}: {value} "
+                    f"(sévérité: {finding.severity})"
+                )
+            for error in result.errors[:3]:
+                lines.append(f"- erreur: {str(error)[:300]}")
+            if len(lines) >= 80:
+                break
+        return "\n".join(lines)[:12000] or "Aucun résultat concluant."
+
     @work(exclusive=True)
     async def run_chat(self, msg: str) -> None:
         wrapper = self.query_one("#chat-messages-wrapper", Static)
@@ -1018,6 +1053,7 @@ class OsintApp(App):
         self._chat_history.append({"role": "user", "content": msg})
 
         targets = self._detect_targets(msg)
+        should_scan = _should_run_scan(msg, targets)
         if RE_AUTHORIZATION.search(msg):
             self._pentest_authorized = True
         SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
@@ -1037,9 +1073,10 @@ class OsintApp(App):
         def _tick():
             s = SPINNER[(int(__import__("time").time() - start) // 2) % len(SPINNER)]
             elapsed = int(__import__("time").time() - start)
+            activity = "Scan en cours" if should_scan else "Nexus AI réfléchit"
             wrapper.update(
                 self._chat_render(self._chat_history)
-                + f"\n[#4ade80]{s} Scan en cours... ({elapsed}s)[/]\n"
+                + f"\n[#4ade80]{s} {activity}... ({elapsed}s)[/]\n"
                 + last_status
             )
             try:
@@ -1048,7 +1085,7 @@ class OsintApp(App):
                 pass
         timer = self.set_interval(1, _tick)
 
-        if targets:
+        if should_scan:
             target, _ = targets[0]
             _set_status(f"> {target}")
             wants_active = bool(RE_ACTIVE_INTENT.search(msg))
@@ -1103,22 +1140,27 @@ class OsintApp(App):
                 if res.findings:
                     all_results[key] = res
 
-            timer.stop()
             elapsed = int(__import__("time").time() - start)
             if all_results:
-                response = (
+                scan_response = (
                     f"[bold #4ade80]Scan ({elapsed}s)[/]\n"
                     f"{self._scan_to_chat(all_results)}"
                 )
             else:
-                response = "[dim]No results[/dim]"
+                scan_response = "[dim]Scan terminé : aucun résultat concluant.[/dim]"
             if wants_active and not active_allowed:
-                response += (
+                scan_response += (
                     "\n\n[#f59e0b]Pentest actif prêt.[/] Confirme une seule fois "
                     "que la cible est autorisée (ex. « j’autorise ce lab »), puis "
                     "relance la demande. La confirmation restera valable pendant "
                     "cette session."
                 )
+            _set_status("> Synthèse Nexus AI")
+            response = await self._run_nexus_ai(
+                msg, self._scan_context(all_results)
+            )
+            response += "\n\n" + scan_response
+            timer.stop()
         else:
             response = await self._run_nexus_ai(msg)
             timer.stop()

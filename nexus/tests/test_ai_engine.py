@@ -58,3 +58,23 @@ def test_local_model_receives_retrieved_context():
     assert answer == "Analyse CSP"
     system_prompt = route.calls[0].request.read().decode()
     assert "web_security.md" in system_prompt
+
+
+def test_local_model_receives_fresh_tool_results():
+    endpoint = "http://127.0.0.1:18888/v1"
+    ai = NexusAI(NexusAIConfig(endpoint=endpoint, model="test", enabled=True))
+    with respx.mock:
+        route = respx.post(f"{endpoint}/chat/completions").mock(
+            return_value=httpx.Response(
+                200, json={"choices": [{"message": {"content": "Synthèse fiable"}}]}
+            )
+        )
+        answer = asyncio.run(
+            ai.answer(
+                "analyse example.com",
+                runtime_context="dns | adresse: 203.0.113.10",
+            )
+        )
+    assert answer == "Synthèse fiable"
+    system_prompt = route.calls[0].request.read().decode()
+    assert "203.0.113.10" in system_prompt
