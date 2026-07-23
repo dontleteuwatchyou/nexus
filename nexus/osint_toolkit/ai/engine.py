@@ -12,10 +12,13 @@ from dataclasses import dataclass, field
 
 import httpx
 
-SYSTEM_PROMPT = """Tu es Nexus AI, assistant spécialisé en OSINT et sécurité.
+from .rag import KnowledgeIndex
+
+SYSTEM_PROMPT = """/no_think
+Tu es Nexus AI, assistant spécialisé en OSINT et sécurité.
 Tu aides à collecter et corréler des informations publiques, à analyser les
 résultats Nexus et à travailler dans des laboratoires de pentest autorisés.
-Sois précis, bref, distingue faits et hypothèses, ne fabrique jamais de
+Sois précis, réponds en 8 lignes maximum, distingue faits et hypothèses, ne fabrique jamais de
 résultat. Propose les modules Nexus adaptés. Pour une action intrusive,
 demande une confirmation d'autorisation une fois par session. Favorise les
 méthodes défensives et les preuves reproductibles."""
@@ -29,8 +32,14 @@ class NexusAIConfig:
         ).rstrip("/")
     )
     model: str = field(default_factory=lambda: os.getenv("NEXUS_AI_MODEL", "local"))
+    api_key: str = field(
+        default_factory=lambda: os.getenv("NEXUS_AI_API_KEY", "nexus-local")
+    )
     timeout: float = field(
         default_factory=lambda: float(os.getenv("NEXUS_AI_TIMEOUT", "120"))
+    )
+    max_tokens: int = field(
+        default_factory=lambda: int(os.getenv("NEXUS_AI_MAX_TOKENS", "180"))
     )
     enabled: bool = field(
         default_factory=lambda: os.getenv("NEXUS_AI_LOCAL", "auto").lower()
@@ -44,6 +53,7 @@ class NexusAI:
     def __init__(self, config: NexusAIConfig | None = None) -> None:
         self.config = config or NexusAIConfig()
         self.history: list[dict[str, str]] = []
+        self.knowledge = KnowledgeIndex.bundled()
 
     @property
     def mode(self) -> str:
@@ -71,19 +81,28 @@ class NexusAI:
         return answer
 
     async def _local_completion(self, message: str) -> str:
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        context = self.knowledge.context(message)
+        system = SYSTEM_PROMPT
+        if context:
+            system += (
+                "\n\nContexte documentaire Nexus à utiliser avec prudence. "
+                "Cite le nom de la source et n'invente rien au-delà :\n" + context
+            )
+        messages = [{"role": "system", "content": system}]
         messages.extend(self.history[-12:])
         messages.append({"role": "user", "content": message})
         payload = {
             "model": self.config.model,
             "messages": messages,
             "temperature": 0.2,
-            "max_tokens": 900,
+            "max_tokens": self.config.max_tokens,
             "stream": False,
         }
         async with httpx.AsyncClient(timeout=self.config.timeout) as client:
             response = await client.post(
-                f"{self.config.endpoint}/chat/completions", json=payload
+                f"{self.config.endpoint}/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {self.config.api_key}"},
             )
             response.raise_for_status()
         data = response.json()
@@ -116,5 +135,5 @@ class NexusAI:
         return (
             "Le moteur conversationnel local n’est pas démarré. Les scans Nexus "
             "restent disponibles : saisis directement une cible. Pour le mode IA, "
-            "lance le serveur local installé par `./install.sh --with-local-ai`."
+            "lance `./scripts/local_ai.sh start`."
         )

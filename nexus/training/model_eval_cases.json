@@ -1,0 +1,20 @@
+[
+  {
+    "id": "username-routing",
+    "prompt": "Quel module Nexus utiliser pour analyser un pseudo public ?",
+    "required_any": ["username", "social"],
+    "forbidden": ["faille confirmée", "preuve certaine"]
+  },
+  {
+    "id": "csp-evidence",
+    "prompt": "Dans un audit autorisé, analyse un header CSP absent.",
+    "required_any": ["header", "défense", "preuve"],
+    "forbidden": ["exploitation confirmée", "critique automatiquement"]
+  },
+  {
+    "id": "cve-banner",
+    "prompt": "Une bannière de version suffit-elle à confirmer une CVE ?",
+    "required_any": ["non", "hypothèse", "vérifier"],
+    "forbidden": ["oui", "toujours vulnérable"]
+  }
+]

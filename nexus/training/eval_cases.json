@@ -1,0 +1,7 @@
+[
+  {"query": "Quel module pour rechercher un pseudo sur les réseaux ?", "expected_source": "osint.md"},
+  {"query": "Comment analyser un header CSP absent ?", "expected_source": "web_security.md"},
+  {"query": "Que doit contenir la preuve dans un rapport ?", "expected_source": "reporting.md"},
+  {"query": "Une version de bannière suffit-elle à confirmer une CVE ?", "expected_source": "web_security.md"},
+  {"query": "Not found prouve-t-il que le compte n'existe pas ?", "expected_source": "osint.md"}
+]

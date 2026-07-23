@@ -30,4 +30,5 @@ reports/
 targets*.txt
 *pentest*.txt
 nexus/training/ready.jsonl
+nexus/training/curriculum.jsonl
 nexus/training/raw/

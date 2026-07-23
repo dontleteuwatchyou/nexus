@@ -181,6 +181,8 @@ OpenAI-compatible server (llama.cpp, an Ollama-compatible proxy, LM Studio,
 etc.):
 
 ```bash
+./scripts/local_ai.sh start               # Docker + official Qwen3-4B GGUF
+./scripts/local_ai.sh status
 export NEXUS_AI_ENDPOINT="http://127.0.0.1:8080/v1"
 export NEXUS_AI_MODEL="local"
 nexus --chat
@@ -189,6 +191,9 @@ nexus --chat
 If the local server is absent, Nexus automatically falls back to Core mode;
 OSINT scans continue to work. Conversation memory stays in the running process
 and is bounded to avoid unrestrained RAM growth.
+
+The first local start downloads roughly 2.5 GB into the Hugging Face cache.
+The server only binds to `127.0.0.1`; it is not exposed to the network.
 
 ## Architecture
 
@@ -281,8 +286,10 @@ Development dependencies (`./install.sh --dev`) are `pytest`,
 | `IG_SESSION_ID` | enables authenticated Instagram features in Toutatis |
 | `NEXUS_AI_ENDPOINT` | local OpenAI-compatible endpoint; defaults to `http://127.0.0.1:8080/v1` |
 | `NEXUS_AI_MODEL` | model identifier exposed by the local server |
+| `NEXUS_AI_API_KEY` | local server token; defaults to `nexus-local` |
 | `NEXUS_AI_LOCAL` | set to `0` to force model-free Core mode |
 | `NEXUS_AI_TIMEOUT` | local inference timeout in seconds |
+| `NEXUS_AI_MAX_TOKENS` | maximum generated tokens; defaults to `180` for CPU compatibility |
 | `NEXUS_VENV` | custom virtual-environment location for the installer |
 | `NEXUS_BIN_DIR` | custom launcher directory; defaults to `~/.local/bin` |
 

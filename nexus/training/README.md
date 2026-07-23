@@ -31,11 +31,34 @@ Metasploitable and synthetic identities.
 .venv/bin/pip install -e '.[train]'
 .venv/bin/python training/prepare_dataset.py \
   training/examples.jsonl training/ready.jsonl
+.venv/bin/python training/build_curriculum.py
+.venv/bin/python training/prepare_dataset.py \
+  training/curriculum.jsonl training/ready.jsonl
 ```
 
 The preparation command validates provenance, roles and content, removes exact
 duplicates, and refuses records that look like secrets. `ready.jsonl` is
 ignored by Git and can then be consumed by a TRL/PEFT QLoRA job.
+
+Check a machine and run the offline retrieval evaluation:
+
+```bash
+.venv/bin/python training/hardware_check.py
+.venv/bin/python training/evaluate_rag.py
+.venv/bin/python training/evaluate_model.py --limit 1  # CPU smoke test
+```
+
+On the RTX 4070 Ti:
+
+```bash
+.venv/bin/python training/train_qlora.py \
+  --dataset training/ready.jsonl \
+  --model Qwen/Qwen3-4B
+```
+
+The default base model is Qwen3-4B (Apache-2.0). A 4070 Ti should start with
+the 4B configuration; the 8B option depends on the card's VRAM and may require
+shorter sequences or more aggressive offloading.
 
 Recommended curriculum:
 
