@@ -100,6 +100,19 @@ def test_model_answer_is_deduplicated_and_guide_is_not_evidence():
     assert answer.count("Attribution impossible") == 1
 
 
+def test_empty_source_wording_is_repaired_and_vague_question_is_concretised():
+    raw = (
+        "La source  indique que l'absence de résultat ne prouve pas l'absence. "
+        "\nPour une analyse plus précise, veuillez préciser votre objectif et "
+        "la source spécifique que vous souhaitez examiner."
+    )
+    answer = sanitize_model_answer(raw)
+    assert "La source" not in answer
+    assert "En OSINT," in answer
+    assert "source spécifique" not in answer
+    assert "pivot concret" in answer
+
+
 def test_unattributed_username_contract_overrides_small_model_claims():
     unsafe = """Verdict : PROBABLE
 Observations :

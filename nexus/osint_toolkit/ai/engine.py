@@ -50,6 +50,10 @@ synthèse de scan, utilise au maximum quatre rubriques courtes : Verdict,
 Observations, Limites, Prochaine étape. Une observation doit nommer sa vraie
 source technique et son niveau de confiance. Évite les longues listes de liens :
 regroupe-les et montre seulement les plus utiles.
+Réponds directement à la question. Ne parle jamais de « la source » sans la
+nommer, ne cite pas les fichiers du corpus interne et ne demande pas à
+l'utilisateur de choisir une source technique. S'il manque un élément, demande
+un pivot concret (pseudo exact, URL de profil, email autorisé ou domaine).
 
 PENTEST
 Les actions actives sont réservées à un périmètre explicitement autorisé.
@@ -131,6 +135,31 @@ def sanitize_model_answer(answer: str) -> str:
             continue
         line = re.sub(r"^\s{0,3}#{1,6}\s*", "", line)
         line = line.replace("**", "").replace("__", "")
+        line = re.sub(
+            r"\bLa source\s*(?:\[[^\]]*\])?\s*indique que\b",
+            "En OSINT,",
+            line,
+            flags=re.IGNORECASE,
+        )
+        line = re.sub(
+            r"\bselon la source\s*(?:\[[^\]]*\])?\s*[,.:;-]*",
+            "",
+            line,
+            flags=re.IGNORECASE,
+        )
+        if re.search(
+            r"\bsource\s+(?:spécifique|technique)\b",
+            line,
+            flags=re.IGNORECASE,
+        ) and re.search(
+            r"\b(?:précis|indiqu|chois)\w*\b",
+            line,
+            flags=re.IGNORECASE,
+        ):
+            line = (
+                "Pour aller plus loin, indique un pivot concret : pseudo exact, "
+                "URL de profil, email autorisé ou domaine."
+            )
         if not line:
             if cleaned and not blank:
                 cleaned.append("")
@@ -527,7 +556,9 @@ class NexusAI:
         if context:
             system += (
                 "\n\nContexte documentaire Nexus à utiliser avec prudence. "
-                "Cite le nom de la source et n'invente rien au-delà :\n" + context
+                "Utilise-le uniquement comme méthode interne : ne cite ni le "
+                "fichier ni une « source » générique dans la réponse. N'invente "
+                "rien au-delà :\n" + context
             )
         if runtime_context:
             system += (
