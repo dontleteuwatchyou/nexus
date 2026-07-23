@@ -1,4 +1,4 @@
-{$DUCKDNS_SUBDOMAIN}.duckdns.org {
+(nexus_site) {
 	encode zstd gzip
 
 	@api path /api/*
@@ -18,4 +18,13 @@
 		}
 		file_server
 	}
+}
+
+{$DUCKDNS_SUBDOMAIN}.duckdns.org {
+	import nexus_site
+}
+
+# Origin HTTP réservé aux tunnels sortants (aucun certificat local nécessaire).
+:8080 {
+	import nexus_site
 }
