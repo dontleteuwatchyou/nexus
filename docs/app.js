@@ -19,7 +19,6 @@ const MODULES = {
     ["social", "⌘", "Social", "Profils et moteurs spécialisés"],
     ["breach", "△", "Fuites", "Sources de compromission"],
     ["github", "◐", "GitHub", "Profil et activité publique"],
-    ["discord", "◈", "Discord", "Username, ancien tag ou ID utilisateur"],
     ["image", "▧", "Image", "Recherche inversée et forensic"],
     ["crypto", "₿", "Crypto", "Explorateurs de blockchain"],
     ["people", "◇", "Personne", "Recherche exacte et corrélation"]
@@ -33,6 +32,9 @@ const MODULES = {
     ["archive", "A", "Archives", "Historique et URLs publiques"],
     ["exposure", "!", "Expositions", "Checklist non destructive"],
     ["external", "↗", "Outils externes", "Validateurs spécialisés"]
+  ],
+  discord: [
+    ["discord-username", "@", "Username checker", "Vérifie si un username est déjà pris"]
   ]
 };
 
@@ -46,7 +48,7 @@ const DETAILS = {
   social: ["OSINT · SOCIAL", "Empreinte sociale", "Pivots adaptés au pseudo, au nom ou à l’adresse email."],
   breach: ["OSINT · BREACH", "Exposition dans les fuites", "Services publics et vérifications manuelles de compromission."],
   github: ["OSINT · GITHUB", "Intelligence GitHub", "Profil, dépôts, activité, clés et recherche de commits publics."],
-  discord: ["OSINT · DISCORD", "Discord tag checker", "Valide localement un username, un ancien tag ou un ID et prépare des vérifications publiques."],
+  "discord-username": ["DISCORD · USERNAME", "Discord username checker", "Interroge Discord pour vérifier si un username est actuellement pris ou disponible."],
   image: ["OSINT · IMAGE", "Recherche visuelle", "Moteurs de recherche inversée et outils de métadonnées."],
   crypto: ["OSINT · CRYPTO", "Analyse de wallet", "Explorateurs publics Bitcoin et Ethereum."],
   people: ["OSINT · PEOPLE", "Recherche de personne", "Requêtes exactes, profils professionnels et publications."],
@@ -187,30 +189,44 @@ function usernameFindings(target) {
   ];
 }
 
-function discordFindings(target) {
-  const clean = target.trim();
-  const snowflake = /^\d{17,20}$/.test(clean);
-  const legacy = /^.{2,32}#\d{4}$/.test(clean);
-  const username = clean.replace(/^@/, "").toLowerCase();
-  const modern = /^[a-z0-9._]{2,32}$/.test(username) && !username.includes("..");
-  if (!snowflake && !legacy && !modern) {
-    throw new Error("Identifiant Discord invalide : utilisez @username, nom#1234 ou un ID de 17 à 20 chiffres.");
+async function checkDiscordUsername(target, timeout = 8000) {
+  const username = target.trim().replace(/^@/, "").toLowerCase();
+  if (!/^[a-z0-9._]{2,32}$/.test(username) || username.includes("..")) {
+    throw new Error("Username invalide : utilisez 2 à 32 caractères minuscules, chiffres, points ou underscores.");
   }
-  const normalized = modern ? username : clean;
-  const kind = snowflake ? "ID utilisateur (snowflake)" : legacy ? "ancien tag Discord" : "nouveau username Discord";
-  const rows = [
-    finding("Discord", "Type détecté", kind, "", "Validation effectuée localement.", "high"),
-    finding("Discord", "Valeur normalisée", normalized, "", "", "high"),
-    finding("Vérification manuelle", "discord.id", "Ouvrir le lookup", `https://discord.id/?prefill=${encode(normalized)}`, "Service tiers ; vérifier ses conditions."),
-    finding("Recherche publique", "Recherche exacte", `"${normalized}" Discord`, `https://www.google.com/search?q=${encode(`"${normalized}" Discord`)}`),
-    finding("Limites", "Existence / disponibilité", "Non vérifiable via l’API publique Discord sans authentification", "", "Un résultat ou un tag similaire ne prouve pas l’identité.", "low")
-  ];
-  if (snowflake) {
-    const createdAt = new Date(Number((BigInt(clean) >> 22n) + 1420070400000n)).toISOString();
-    rows.splice(2, 0, finding("Snowflake", "Date de création intégrée", createdAt, "", "Métadonnée décodée localement depuis l’ID.", "high"));
-    rows.splice(3, 0, finding("Vérification manuelle", "DiscordLookup", "Ouvrir le lookup", `https://discordlookup.com/user/${encode(clean)}`, "Service tiers."));
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch("https://discord.com/api/v9/unique-username/username-attempt-unauthed", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username }),
+      signal: controller.signal
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || typeof data.taken !== "boolean") {
+      const detail = data.errors?.username?._errors?.[0]?.message || data.message || `HTTP ${response.status}`;
+      throw new Error(`Discord a refusé la vérification : ${detail}`);
+    }
+    return [
+      finding("Discord", "Username vérifié", `@${username}`, "", "Requête envoyée directement à Discord.", "live"),
+      finding(
+        "Disponibilité",
+        data.taken ? "Déjà pris" : "Disponible",
+        data.taken ? `@${username} est actuellement utilisé` : `@${username} est actuellement disponible`,
+        "",
+        "Le statut peut changer à tout moment et Discord reste l’autorité finale.",
+        data.taken ? "low" : "live"
+      )
+    ];
+  } catch (error) {
+    if (error.name === "AbortError") throw new Error("Discord n’a pas répondu dans le délai prévu.");
+    throw error;
+  } finally {
+    clearTimeout(timer);
   }
-  return rows;
 }
 
 function domainFindings(target) {
@@ -329,7 +345,6 @@ function osintFindings(target, module, detected) {
   if (chosen === "crypto" || chosen.startsWith("crypto-")) return cryptoFindings(target, detected.startsWith("crypto-") ? detected : "crypto-btc");
   if (chosen === "image") return imageFindings(target);
   if (chosen === "github") return githubFindings(target);
-  if (chosen === "discord") return discordFindings(target);
   if (chosen === "breach") return breachFindings(target);
   if (chosen === "social") return socialFindings(target, detected);
   throw new Error("Type de cible non reconnu pour ce module.");
@@ -350,8 +365,12 @@ function selectModule(id) {
   document.querySelectorAll(".module-button").forEach((button, index) => button.classList.toggle("active", MODULES[state.category][index]?.[0] === id));
   const [kicker, title, description] = DETAILS[id]; $("#module-kicker").textContent = kicker; $("#module-title").textContent = title; $("#module-description").textContent = description;
   $("#authorization-wrap").hidden = state.category !== "recon";
-  $("#live-wrap").hidden = state.category === "recon";
-  $("#privacy-note").textContent = state.category === "recon" ? "Planification locale · les outils externes s’ouvrent uniquement au clic" : ($("#live-passive").checked ? "Mode passif · la cible sera transmise aux API publiques nécessaires" : "Mode local · aucune cible transmise automatiquement");
+  $("#live-wrap").hidden = state.category !== "osint";
+  $("#privacy-note").textContent = state.category === "recon"
+    ? "Planification locale · les outils externes s’ouvrent uniquement au clic"
+    : state.category === "discord"
+      ? "Vérification en direct · le username est transmis à Discord"
+      : ($("#live-passive").checked ? "Mode passif · la cible sera transmise aux API publiques nécessaires" : "Mode local · aucune cible transmise automatiquement");
 }
 
 function renderResults(rows) {
@@ -407,13 +426,18 @@ async function run() {
     if (detected === "unknown") throw new Error("Le format de la cible n’est pas valide.");
     if (state.category === "recon" && !$("#authorized").checked) throw new Error("Confirmez votre autorisation explicite avant de préparer la reconnaissance.");
     const button = $("#run"); button.disabled = true; button.classList.add("running"); button.firstChild.textContent = "Analyse… ";
-    let findings = state.category === "recon" ? reconFindings(target, state.module) : osintFindings(target, state.module, detected);
+    let findings;
+    if (state.category === "recon") findings = reconFindings(target, state.module);
+    else if (state.category === "discord") findings = await checkDiscordUsername(target);
+    else findings = osintFindings(target, state.module, detected);
     if ($("#live-passive").checked && state.category === "osint") findings = [...await liveEnrichment(target, detected, state.module), ...findings];
     state.report = { target, detected, category: state.category, module: state.module, generatedAt: new Date().toISOString(), findings };
     saveHistory(state.report);
     $("#empty-state").hidden = true; $("#run-summary").hidden = false;
     $("#summary-title").textContent = `${findings.length} pivot${findings.length > 1 ? "s" : ""} préparé${findings.length > 1 ? "s" : ""}`;
-    $("#summary-meta").textContent = `Type ${detected} · ${$("#live-passive").checked ? "enrichissement passif demandé" : "mode local"}`;
+    $("#summary-meta").textContent = state.category === "discord"
+      ? "Discord · vérification en direct"
+      : `Type ${detected} · ${$("#live-passive").checked ? "enrichissement passif demandé" : "mode local"}`;
     renderResults(findings);
   } catch (error) {
     $("#empty-state").hidden = false; $("#empty-state h2").textContent = "Impossible de préparer l’analyse"; $("#empty-state p").textContent = error.message;

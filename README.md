@@ -73,7 +73,7 @@ Le Web Lab est une version statique compatible GitHub Pages. Il propose :
 - détection locale de cible et plus de 50 pivots publics ;
 - enrichissement passif optionnel via Google Public DNS, GitHub, IPWhois et
   mempool.space ;
-- 13 parcours OSINT et 8 parcours de reconnaissance guidée ;
+- 12 parcours OSINT, un checker Discord et 8 parcours de reconnaissance guidée ;
 - historique local et exports JSON, CSV et Markdown.
 
 Il ne peut pas exécuter Nmap, des sockets TCP, Python ou les outils système du
