@@ -147,6 +147,27 @@ def terminal_plain_text(text: str) -> str:
     )
 
 
+def remove_authorization_boilerplate(text: str) -> str:
+    """Remove verbose model refusals when the UI already shows a short notice."""
+    sentences = re.split(r"(?<=[.!?])\s+", terminal_plain_text(text).strip())
+    blocked_patterns = (
+        r"\bje ne peux pas\b.*\b(?:intrusive|pentest|attaque)\b",
+        r"\bje peux\b.*\bmodules? de pentest\b",
+        r"\bconfirmez\b.*\b(?:demande|autorisation|périmètre)\b",
+        r"\bmettrai à votre disposition\b",
+    )
+    kept = [
+        sentence
+        for sentence in sentences
+        if sentence
+        and not any(
+            re.search(pattern, sentence, flags=re.IGNORECASE)
+            for pattern in blocked_patterns
+        )
+    ]
+    return " ".join(kept).strip()
+
+
 def sanitize_model_answer(answer: str) -> str:
     """Make small-model output readable and remove exact repeated material."""
     cleaned: list[str] = []

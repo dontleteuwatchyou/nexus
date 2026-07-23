@@ -6,6 +6,7 @@ from .engine import (
     NexusAIConfig,
     ReviewDecision,
     enforce_evidence_contract,
+    remove_authorization_boilerplate,
     sanitize_model_answer,
     terminal_plain_text,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "detect_hardware",
     "enforce_evidence_contract",
     "format_live_metrics",
+    "remove_authorization_boilerplate",
     "sanitize_model_answer",
     "select_profile",
     "terminal_plain_text",

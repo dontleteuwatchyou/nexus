@@ -12,6 +12,7 @@ from osint_toolkit.ai import (
     NexusAI,
     NexusAIConfig,
     enforce_evidence_contract,
+    remove_authorization_boilerplate,
     sanitize_model_answer,
 )
 
@@ -111,6 +112,16 @@ def test_empty_source_wording_is_repaired_and_vague_question_is_concretised():
     assert "En OSINT," in answer
     assert "source spécifique" not in answer
     assert "pivot concret" in answer
+
+
+def test_verbose_authorization_refusal_can_be_replaced_by_ui_notice():
+    raw = (
+        "Je ne peux pas effectuer une attaque intrusive sans autorisation. "
+        "Pour une analyse défensive, je peux vous proposer des modules de pentest "
+        "tels que subdomains ou headers. Confirmez votre demande et je me mettrai "
+        "à votre disposition."
+    )
+    assert remove_authorization_boilerplate(raw) == ""
 
 
 def test_unattributed_username_contract_overrides_small_model_claims():

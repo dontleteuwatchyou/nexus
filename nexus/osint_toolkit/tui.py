@@ -20,6 +20,7 @@ from .ai import (
     NexusAI,
     collect_live_metrics,
     format_live_metrics,
+    remove_authorization_boilerplate,
     terminal_plain_text,
 )
 from .correlate import (OSINT_MODULES, PENTEST_MODULES, PENTEST_TARGET_TYPES,
@@ -991,7 +992,7 @@ class OsintApp(App):
                 "breach": "correspondances du pseudo · non attribuées",
             }
             qualifier = qualifiers.get(mod, "observations techniques")
-            badge = f"[#ef4444] · {len(r.errors)} erreur(s)[/]" if r.errors else ""
+            badge = f" | {len(r.errors)} erreur(s)" if r.errors else ""
 
             by_src = {}
             for f in r.findings:
@@ -1000,18 +1001,17 @@ class OsintApp(App):
             lines = []
             for src, findings in list(by_src.items())[:4]:
                 labels = ", ".join(
-                    f"{escape(f.label)}: {escape(str(f.value)[:50])}"
+                    f"{f.label}: {str(f.value)[:50]}"
                     for f in findings[:2]
                 )
                 if len(findings) > 2:
                     labels += f" [+{len(findings)-2}]"
-                lines.append(f"  [#fdba74]•[/] [dim]{escape(src)}:[/] {labels}")
+                lines.append(f"  - {src}: {labels}")
             if len(by_src) > 4:
-                lines.append(f"  [dim]… {len(by_src)-4} autre(s) source(s)[/]")
+                lines.append(f"  - {len(by_src)-4} autre(s) source(s)")
 
             out.append(
-                f"[bold #f59e0b]◆ {escape(mod.upper())}[/] [#a3a3a3]{escape(val)}[/]"
-                f" [#737373]· {n_total} signaux · {qualifier}[/]{badge}\n"
+                f"{mod.upper()} | {val} | {n_total} signaux | {qualifier}{badge}\n"
                 + "\n".join(lines)
             )
         return "\n".join(out)
@@ -1187,14 +1187,14 @@ class OsintApp(App):
                 "unattributed": "NON ATTRIBUÉ",
             }
             analysis_lines = [
-                f"[bold #a78bfa]Analyse de l’agent[/]",
-                f"  [#a3a3a3]Plan[/] · {escape(decision.rationale or 'modules minimaux adaptés à la cible')}",
-                f"  [#a3a3a3]Revue[/] · {confidence_labels[review.confidence]} · "
-                f"{escape(review.summary)}",
+                "ANALYSE DE L'AGENT",
+                f"Plan | {decision.rationale or 'modules minimaux adaptés à la cible'}",
+                f"Revue | {confidence_labels[review.confidence]} | "
+                f"{review.summary}",
             ]
             if review.gap:
                 analysis_lines.append(
-                    f"  [#a3a3a3]Preuve manquante[/] · {escape(review.gap)}"
+                    f"Preuve manquante | {review.gap}"
                 )
 
             follow_osint = set(review.next_modules).intersection(OSINT_MODULES)
@@ -1206,7 +1206,7 @@ class OsintApp(App):
             if review.decision == "pivot" and (follow_osint or follow_pentest):
                 pivot_names = sorted(follow_osint | follow_pentest)
                 analysis_lines.append(
-                    "  [#a3a3a3]Pivot[/] · " + escape(", ".join(pivot_names))
+                    "Pivot | " + ", ".join(pivot_names)
                 )
                 activity = "Nexus exécute un pivot ciblé"
                 _set_status(f"> Pivot IA : {', '.join(pivot_names)}")
@@ -1227,34 +1227,30 @@ class OsintApp(App):
                     attempted_modules,
                 )
                 analysis_lines.append(
-                    f"  [#a3a3a3]Conclusion[/] · "
-                    f"{confidence_labels[final_review.confidence]} · "
-                    f"{escape(final_review.summary)}"
+                    f"Conclusion | {confidence_labels[final_review.confidence]} | "
+                    f"{final_review.summary}"
                 )
                 review = final_review
             else:
                 analysis_lines.append(
-                    "  [#a3a3a3]Décision[/] · arrêt, aucun outil supplémentaire utile"
+                    "Décision | arrêt, aucun outil supplémentaire utile"
                 )
 
             elapsed = int(__import__("time").time() - start)
             if any(result.findings for result in all_results.values()):
                 scan_response = (
                     "\n".join(analysis_lines)
-                    + f"\n\n[bold #4ade80]Scan ({elapsed}s)[/]\n"
+                    + f"\n\nSCAN TERMINÉ | {elapsed}s\n"
                     f"{self._scan_to_chat(all_results)}"
                 )
             else:
                 scan_response = (
                     "\n".join(analysis_lines)
-                    + "\n\n[dim]Scan terminé : aucun résultat concluant.[/dim]"
+                    + "\n\nSCAN TERMINÉ | aucun résultat concluant"
                 )
             if active_intent and not session_authorized:
                 scan_response += (
-                    "\n\n[#f59e0b]Pentest actif prêt.[/] Confirme une seule fois "
-                    "que la cible est autorisée (ex. « j’autorise ce lab »), puis "
-                    "relance la demande. La confirmation restera valable pendant "
-                    "cette session."
+                    "\n\nPENTEST NON EXÉCUTÉ | autorisation explicite requise"
                 )
             activity = "Nexus AI rédige le rapport"
             _set_status("> Analyse des preuves")
@@ -1273,6 +1269,8 @@ class OsintApp(App):
             response = await self._run_nexus_ai(
                 msg, runtime_context
             )
+            if active_intent and not session_authorized:
+                response = remove_authorization_boilerplate(response)
             response += "\n\n" + scan_response
             timer.stop()
         else:

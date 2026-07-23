@@ -47,6 +47,10 @@ def test_terminal_summary_labels_candidates_and_unattributed_breaches():
     assert "liens candidats · identité non vérifiée" in rendered
     assert "correspondances du pseudo · non attribuées" in rendered
     assert "résultats" not in rendered
+    assert "◆" not in rendered
+    assert "•" not in rendered
+    assert "[bold" not in rendered
+    assert "SOCIAL | yanis |" in rendered
 
 
 def test_chat_render_removes_markdown_decoration_from_assistant_output():
