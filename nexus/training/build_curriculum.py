@@ -26,6 +26,97 @@ PENTEST = {
     "dirs": "chemins web dans le périmètre du laboratoire",
 }
 
+SPECIALISED_CASES = [
+    (
+        "Je cherche Yanis Wilmet à Marchin. Le scan du pseudo yanis retourne "
+        "des profils X, Instagram et GitHub. Sont-ils à lui ?",
+        "NON ATTRIBUÉ. Le scan prouve seulement que des URL ou comptes utilisent "
+        "le pseudo générique yanis. Il faut valider les pages et corréler au moins "
+        "deux attributs indépendants, par exemple nom public, ville, photo ou "
+        "liens croisés. Avec ces données, l'attribution est impossible.",
+        "identity-correlation",
+    ),
+    (
+        "Hudson Rock retourne trois ordinateurs pour le username yanis. "
+        "Puis-je dire que Yanis a trois PC infectés ?",
+        "Non. Formulation correcte : le fournisseur retourne trois enregistrements "
+        "infostealer correspondant au pseudo recherché. Un pseudo ne suffit pas à "
+        "attribuer ces machines à une personne.",
+        "breach-attribution",
+    ),
+    (
+        "LeakCheck affiche 1000 entrées pour un pseudo. Fais une conclusion.",
+        "Observation : 1 000 entrées indexées correspondent à la chaîne recherchée. "
+        "Confiance : NON ATTRIBUÉ. Ce nombre ne prouve ni une identité unique, ni "
+        "1 000 comptes appartenant au sujet. Corréler avec un identifiant stable "
+        "autorisé avant toute notification.",
+        "breach-attribution",
+    ),
+    (
+        "Le module social donne https://x.com/alex. Le compte est confirmé ?",
+        "Non. C'est une URL candidate construite à partir du pseudo. Il faut vérifier "
+        "que la page existe puis comparer des attributs publics indépendants avant "
+        "toute attribution.",
+        "source-evaluation",
+    ),
+    (
+        "Sherlock trouve le même pseudo sur 165 sites. C'est la même personne.",
+        "Cette conclusion n'est pas étayée. Ce sont 165 présences potentielles de la "
+        "même chaîne, pas 165 comptes d'une identité confirmée. Classer chaque résultat "
+        "comme PISTE et rechercher des liens croisés et attributs concordants.",
+        "identity-correlation",
+    ),
+    (
+        "Utilise osint.md comme source de mon constat.",
+        "Impossible : osint.md est un guide méthodologique interne, pas une source de "
+        "preuve. Le constat doit citer la source technique réellement interrogée, "
+        "son horodatage et l'observation reproductible.",
+        "reporting",
+    ),
+    (
+        "Une recherche manuelle DeHashed est affichée. Il y a donc une fuite.",
+        "Non. Un lien de recherche manuelle indique uniquement où poursuivre la "
+        "vérification. Sans réponse positive et corrélée, aucune fuite n'est confirmée.",
+        "source-evaluation",
+    ),
+    (
+        "Deux profils ont le même nom et la même photo. Attribution confirmée ?",
+        "Pas nécessairement. La photo peut être recopiée et les deux attributs peuvent "
+        "provenir d'une même source. Rechercher des preuves indépendantes : liens "
+        "réciproques, identifiant stable, domaine contrôlé ou chronologie cohérente.",
+        "identity-correlation",
+    ),
+    (
+        "Le scanner n'a rien trouvé. La personne n'a aucune fuite.",
+        "Conclusion invalide. Une absence de résultat peut venir de la couverture, "
+        "d'un timeout ou d'une source indisponible. Rapporter « aucune correspondance "
+        "dans les sources interrogées à cet instant », avec les limites.",
+        "source-evaluation",
+    ),
+    (
+        "Nmap montre le port 443 et une bannière nginx. Donne la CVE exploitable.",
+        "Un port et une bannière ne suffisent pas à confirmer une CVE. Vérifier la "
+        "version réelle, la configuration, la plage affectée et l'avis primaire, puis "
+        "valider sans impact dans le périmètre autorisé.",
+        "pentest-analysis",
+    ),
+    (
+        "Le header CSP est absent, le site est donc compromis.",
+        "Non. L'absence de CSP est un manque de défense observé par le module headers, "
+        "pas une preuve de compromission ni d'exploitation. Décrire l'impact potentiel, "
+        "la configuration recommandée et la méthode de retest.",
+        "pentest-analysis",
+    ),
+    (
+        "Présente un résultat OSINT lisible dans un terminal.",
+        "Verdict\nAttribution impossible avec les données actuelles.\n\n"
+        "Observations\n- PISTE · source réelle · signal observé\n\n"
+        "Limites\n- Même pseudo ≠ même identité\n\n"
+        "Prochaine étape\n- Vérifier un pivot discriminant et autorisé.",
+        "reporting",
+    ),
+]
+
 
 def record(user: str, assistant: str, category: str) -> dict:
     return {
@@ -77,6 +168,7 @@ def build() -> list[dict]:
                 "pentest-analysis",
             )
         )
+    rows.extend(record(user, assistant, category) for user, assistant, category in SPECIALISED_CASES)
     return rows
 
 

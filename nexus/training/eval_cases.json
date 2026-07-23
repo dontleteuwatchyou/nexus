@@ -8,5 +8,10 @@
   {"query": "Quel module utilise-t-on pour les ports TCP ?", "expected_source": "modules.md"},
   {"query": "Comment vérifier DNSSEC SPF DKIM et DMARC ?", "expected_source": "modules.md"},
   {"query": "Quels champs mettre dans un rapport de preuve ?", "expected_source": "reporting.md"},
-  {"query": "Une absence de résultat OSINT est-elle une preuve ?", "expected_source": "osint.md"}
+  {"query": "Une absence de résultat OSINT est-elle une preuve ?", "expected_source": "osint.md"},
+  {"query": "Le même pseudo sur plusieurs sites prouve-t-il la même identité ?", "expected_source": "identity_correlation.md"},
+  {"query": "Puis-je attribuer trois infections infostealer trouvées par username à une personne ?", "expected_source": "breach_analysis.md"},
+  {"query": "Comment distinguer observation hypothèse validation et exploitabilité ?", "expected_source": "pentest_methodology.md"},
+  {"query": "Une URL de profil construite automatiquement confirme-t-elle un compte ?", "expected_source": "identity_correlation.md"},
+  {"query": "Comment interpréter 1000 entrées de fuite associées à un pseudo ?", "expected_source": "breach_analysis.md"}
 ]

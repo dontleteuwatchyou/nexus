@@ -1,6 +1,12 @@
 """Nexus AI: local-first assistant and tool-orchestration primitives."""
 
-from .engine import NexusAI, NexusAIConfig
+from .engine import (
+    AgentDecision,
+    NexusAI,
+    NexusAIConfig,
+    enforce_evidence_contract,
+    sanitize_model_answer,
+)
 from .performance import (
     AIProfile,
     HardwareInfo,
@@ -13,6 +19,7 @@ from .rag import Document, KnowledgeIndex
 
 __all__ = [
     "AIProfile",
+    "AgentDecision",
     "Document",
     "HardwareInfo",
     "KnowledgeIndex",
@@ -20,6 +27,8 @@ __all__ = [
     "NexusAIConfig",
     "collect_live_metrics",
     "detect_hardware",
+    "enforce_evidence_contract",
     "format_live_metrics",
+    "sanitize_model_answer",
     "select_profile",
 ]

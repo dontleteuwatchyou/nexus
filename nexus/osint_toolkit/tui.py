@@ -17,8 +17,8 @@ from textual.reactive import reactive
 from textual.widgets import (Footer, Header, Input, ListItem, ListView, Static)
 
 from .ai import NexusAI, collect_live_metrics, format_live_metrics
-from .correlate import (PENTEST_TARGET_TYPES, detect_target_type, scan_chained,
-                        scan_full, scan_one)
+from .correlate import (OSINT_MODULES, PENTEST_MODULES, PENTEST_TARGET_TYPES,
+                        detect_target_type, scan_chained, scan_full, scan_one)
 from .external import find_tool
 from .models import ScanResult
 
@@ -27,16 +27,6 @@ RE_EMAIL = re.compile(r'[\w\.-]+@[\w\.-]+\.\w{2,}')
 RE_URL   = re.compile(r'https?://[^\s]+')
 RE_IP    = re.compile(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b')
 RE_DOMAIN = re.compile(r'\b[\w\.-]+\.[a-z]{2,}\b')
-RE_ACTIVE_INTENT = re.compile(
-    r"\b(pentest|audit(?:er)?|scan actif|vuln(?:érabilité|erabilite)?|explo(?:it|iter))\b",
-    re.IGNORECASE,
-)
-RE_SCAN_INTENT = re.compile(
-    r"\b(scan(?:ne|ner)?|analyse(?:r)?|recherche(?:r)?|cherche(?:r)?|"
-    r"trouve(?:r)?|check(?:er)?|vérifie(?:r)?|verifie(?:r)?|enqu[eê]te|"
-    r"recon|osint|pentest|audit(?:e|er)?)\b",
-    re.IGNORECASE,
-)
 RE_AUTHORIZATION = re.compile(
     r"\b(j['’ ]autorise|autorisé|autorisee|m['’ ]appartient|mon (?:site|lab|réseau|reseau)|"
     r"permission|scope autorisé|scope autorise)\b",
@@ -66,15 +56,6 @@ RE_APPELLE = re.compile(r'(?:surnom|pseudo|appel(?:le|lé|er|lait)?)[:\s]+(\w[\w
 
 OUTPUT_DIR = Path.home() / ".osint-toolkit" / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def _should_run_scan(msg: str, targets: list[tuple[str, str]]) -> bool:
-    """Only turn chat into an action when the user clearly requests one."""
-    if not targets:
-        return False
-    stripped = msg.strip().rstrip(".,;:!?")
-    target_only = any(stripped.casefold() == target.casefold() for target, _ in targets)
-    return target_only or bool(RE_SCAN_INTENT.search(msg))
 
 
 # Items per category. (key, label, description)
@@ -996,18 +977,20 @@ class OsintApp(App):
             parts = key.split(":", 2)
             cat, mod, val = (parts + [""] * 3)[:3] if len(parts) >= 2 else ("", "", "")
             n_total = len(r.findings)
-            n_found = len(r.by_severity("found"))
-
-            badge = f"[bold #4ade80]{n_found} trouve[/]" if n_found else ""
-            if r.errors and n_total > 0:
-                badge += f" [#ef4444]{len(r.errors)} err[/]"
+            qualifiers = {
+                "social": "liens candidats · identité non vérifiée",
+                "username": "présences potentielles · identité non vérifiée",
+                "breach": "correspondances du pseudo · non attribuées",
+            }
+            qualifier = qualifiers.get(mod, "observations techniques")
+            badge = f"[#ef4444] · {len(r.errors)} erreur(s)[/]" if r.errors else ""
 
             by_src = {}
             for f in r.findings:
                 by_src.setdefault(f.source, []).append(f)
 
             lines = []
-            for src, findings in list(by_src.items())[:5]:
+            for src, findings in list(by_src.items())[:4]:
                 labels = ", ".join(
                     f"{escape(f.label)}: {escape(str(f.value)[:50])}"
                     for f in findings[:2]
@@ -1015,12 +998,12 @@ class OsintApp(App):
                 if len(findings) > 2:
                     labels += f" [+{len(findings)-2}]"
                 lines.append(f"  [#fdba74]•[/] [dim]{escape(src)}:[/] {labels}")
-            if len(by_src) > 5:
-                lines.append(f"  [dim]... + {len(by_src)-5} sources[/]")
+            if len(by_src) > 4:
+                lines.append(f"  [dim]… {len(by_src)-4} autre(s) source(s)[/]")
 
             out.append(
                 f"[bold #f59e0b]◆ {escape(mod.upper())}[/] [#a3a3a3]{escape(val)}[/]"
-                f" [#737373]· {n_total} resultats[/] {badge}\n"
+                f" [#737373]· {n_total} signaux · {qualifier}[/]{badge}\n"
                 + "\n".join(lines)
             )
         return "\n".join(out)
@@ -1028,13 +1011,38 @@ class OsintApp(App):
     @staticmethod
     def _scan_context(results: dict[str, ScanResult]) -> str:
         """Compact, plain-text evidence passed to the local model."""
-        lines: list[str] = []
+        lines: list[str] = [
+            "RÈGLES D'INTERPRÉTATION DE CE SCAN :",
+            "- Les résultats portent sur l'identifiant saisi, pas sur une personne.",
+            "- Même pseudo != même identité. Aucune attribution sans corrélation.",
+            "- Les URL social/manual lookup sont des pistes non vérifiées.",
+            "- Les résultats breach d'un pseudo sont NON ATTRIBUÉS à la personne visée.",
+            "- Ne cite que les sources techniques ci-dessous, jamais les guides RAG.",
+            "",
+            "DONNÉES BRUTES NORMALISÉES :",
+        ]
         for key, result in results.items():
-            lines.append(f"[{key}]")
+            parts = key.split(":", 2)
+            module = parts[1] if len(parts) >= 2 else result.module
+            target = parts[2] if len(parts) >= 3 else result.target
+            interpretation = {
+                "social": "PISTES : URL candidates, existence/propriété non confirmées",
+                "username": "PISTES : correspondances automatisées, identité non confirmée",
+                "breach": "NON ATTRIBUÉ : occurrences de l'identifiant uniquement",
+            }.get(module, "OBSERVATIONS TECHNIQUES")
+            lines.append(f"[module={module} cible={target} statut={interpretation}]")
             for finding in result.findings[:12]:
                 value = str(finding.value).replace("\n", " ")[:300]
+                evidence_kind = (
+                    "PISTE"
+                    if module in {"social", "username"}
+                    or finding.source == "manual lookup"
+                    else "NON ATTRIBUÉ"
+                    if module == "breach"
+                    else "OBSERVATION"
+                )
                 lines.append(
-                    f"- {finding.source} | {finding.label}: {value} "
+                    f"- {evidence_kind} | {finding.source} | {finding.label}: {value} "
                     f"(sévérité: {finding.severity})"
                 )
             for error in result.errors[:3]:
@@ -1052,8 +1060,12 @@ class OsintApp(App):
 
         self._chat_history.append({"role": "user", "content": msg})
 
-        targets = self._detect_targets(msg)
-        should_scan = _should_run_scan(msg, targets)
+        detected_targets = self._detect_targets(msg)
+        if detected_targets:
+            self._agent_targets = detected_targets
+        targets = detected_targets or getattr(self, "_agent_targets", [])
+        should_scan = False
+        activity = "Nexus AI réfléchit"
         if RE_AUTHORIZATION.search(msg):
             self._pentest_authorized = True
         SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
@@ -1073,7 +1085,6 @@ class OsintApp(App):
         def _tick():
             s = SPINNER[(int(__import__("time").time() - start) // 2) % len(SPINNER)]
             elapsed = int(__import__("time").time() - start)
-            activity = "Scan en cours" if should_scan else "Nexus AI réfléchit"
             wrapper.update(
                 self._chat_render(self._chat_history)
                 + f"\n[#4ade80]{s} {activity}... ({elapsed}s)[/]\n"
@@ -1085,10 +1096,21 @@ class OsintApp(App):
                 pass
         timer = self.set_interval(1, _tick)
 
+        if not hasattr(self, "_nexus_ai"):
+            self._nexus_ai = NexusAI()
+        decision = await self._nexus_ai.plan(msg, targets)
+        should_scan = decision.action == "scan" and bool(decision.target)
+
         if should_scan:
-            target, _ = targets[0]
+            activity = "Nexus exécute le plan"
+            target = decision.target or ""
             _set_status(f"> {target}")
-            wants_active = bool(RE_ACTIVE_INTENT.search(msg))
+            if decision.rationale:
+                _set_status(f"> Plan IA : {decision.rationale}")
+            requested_modules = set(decision.modules)
+            selected_osint = requested_modules.intersection(OSINT_MODULES)
+            selected_pentest = requested_modules.intersection(PENTEST_MODULES)
+            wants_active = decision.active or bool(selected_pentest)
             active_allowed = wants_active and getattr(
                 self, "_pentest_authorized", False
             )
@@ -1107,28 +1129,24 @@ class OsintApp(App):
                     _set_status(f"> [done] {mod}")
                     return key, r
 
-            ttype = targets[0][1]
-            if ttype == "email":
-                selected_osint = {"email", "breach"}
-            elif ttype == "username":
-                selected_osint = {"username", "social", "breach"}
-            elif ttype == "ip":
-                selected_osint = {"ip", "breach"}
-            elif ttype == "domain":
-                selected_osint = {"domain", "url", "breach"}
-            elif ttype == "url":
-                selected_osint = {"url", "domain", "breach"}
-            else:
-                selected_osint = {"domain", "url", "breach"}
-
-            pentest_mods = {"fingerprint", "ssl", "headers", "whois", "js",
-                            "dirs", "spring", "cors", "dns-sec", "graphql"}
+            ttype = decision.target_type or detect_target_type(target)
+            if not selected_osint and not selected_pentest:
+                minimal_modules = {
+                    "email": {"email"},
+                    "username": {"username"},
+                    "ip": {"ip"},
+                    "domain": {"domain"},
+                    "url": {"url"},
+                    "phone": {"phone"},
+                    "crypto": {"crypto"},
+                }
+                selected_osint = minimal_modules.get(ttype, set())
 
             tasks = [asyncio.create_task(_run("osint", m)) for m in selected_osint]
             if active_allowed:
                 tasks += [
                     asyncio.create_task(_run("pentest", m))
-                    for m in pentest_mods
+                    for m in selected_pentest
                 ]
 
             all_results = {}
@@ -1137,11 +1155,10 @@ class OsintApp(App):
                     key, res = await fut
                 except Exception:
                     continue
-                if res.findings:
-                    all_results[key] = res
+                all_results[key] = res
 
             elapsed = int(__import__("time").time() - start)
-            if all_results:
+            if any(result.findings for result in all_results.values()):
                 scan_response = (
                     f"[bold #4ade80]Scan ({elapsed}s)[/]\n"
                     f"{self._scan_to_chat(all_results)}"
@@ -1155,9 +1172,15 @@ class OsintApp(App):
                     "relance la demande. La confirmation restera valable pendant "
                     "cette session."
                 )
-            _set_status("> Synthèse Nexus AI")
+            activity = "Nexus AI rédige le rapport"
+            _set_status("> Analyse des preuves")
+            runtime_context = self._scan_context(all_results)
+            if wants_active and not active_allowed:
+                runtime_context += (
+                    "\nAction pentest non exécutée : autorisation explicite requise."
+                )
             response = await self._run_nexus_ai(
-                msg, self._scan_context(all_results)
+                msg, runtime_context
             )
             response += "\n\n" + scan_response
             timer.stop()

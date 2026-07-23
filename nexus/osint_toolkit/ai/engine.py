@@ -7,7 +7,9 @@ and retains a useful deterministic mode when no model is running.
 
 from __future__ import annotations
 
+import json
 import os
+import re
 from dataclasses import dataclass, field
 
 import httpx
@@ -16,13 +18,201 @@ from .performance import AIProfile, select_profile
 from .rag import KnowledgeIndex
 
 SYSTEM_PROMPT = """/no_think
-Tu es Nexus AI, assistant spécialisé en OSINT et sécurité.
-Tu aides à collecter et corréler des informations publiques, à analyser les
-résultats Nexus et à travailler dans des laboratoires de pentest autorisés.
-Sois précis, réponds en 8 lignes maximum, distingue faits et hypothèses, ne fabrique jamais de
-résultat. Propose les modules Nexus adaptés. Pour une action intrusive,
-demande une confirmation d'autorisation une fois par session. Favorise les
-méthodes défensives et les preuves reproductibles."""
+Tu es Nexus AI, analyste OSINT et sécurité. Réponds en français sauf demande
+contraire. Tu analyses exclusivement les données fournies par Nexus et les
+faits explicitement donnés par l'utilisateur.
+
+CONTRAT DE PREUVE OBLIGATOIRE
+- Un pseudo identique ne prouve jamais une identité identique. « yanis » peut
+  appartenir à de nombreuses personnes. N'attribue aucun compte, fuite,
+  ordinateur ou lieu à une personne sans au moins deux attributs indépendants
+  et concordants (par exemple nom + photo + ville, ou email + profil lié).
+- Une URL construite par les modules social/manual lookup est une piste à
+  visiter, pas la preuve que la page existe ni qu'elle appartient à la cible.
+- Un statut HTTP ou une détection automatisée de pseudo est une observation
+  technique, pas une attribution d'identité.
+- Une correspondance breach/infostealer sur un pseudo concerne l'identifiant
+  saisi. Elle ne prouve ni que la personne visée est victime, ni que les
+  occurrences appartiennent au même individu. Ne dis jamais « ses ordinateurs »
+  ou « ses comptes » sans corrélation probante.
+- Les documents RAG (`osint.md`, `reporting.md`, etc.) sont des guides de
+  méthode, jamais des sources d'un constat. Ne les affiche pas comme Source.
+- Ne transforme jamais une quantité, un lien de recherche manuelle, une erreur,
+  un timeout ou une absence de résultat en fait confirmé.
+- Utilise ces niveaux : CONFIRMÉ (preuve directe), PROBABLE (plusieurs attributs
+  concordants), PISTE (un seul signal), NON ATTRIBUÉ (pseudo générique).
+- Si la preuve est insuffisante, écris clairement « attribution impossible avec
+  les données actuelles ». Ne complète rien de mémoire et n'invente rien.
+
+FORMAT TERMINAL
+Réponds une seule fois, sans répéter de bloc et sans tableau Markdown. Pour une
+synthèse de scan, utilise au maximum quatre rubriques courtes : Verdict,
+Observations, Limites, Prochaine étape. Une observation doit nommer sa vraie
+source technique et son niveau de confiance. Évite les longues listes de liens :
+regroupe-les et montre seulement les plus utiles.
+
+PENTEST
+Les actions actives sont réservées à un périmètre explicitement autorisé.
+Distingue détection, validation et exploitabilité. Une bannière, une version ou
+un header absent ne confirme pas une vulnérabilité. Favorise la reproduction,
+la remédiation et les laboratoires isolés."""
+
+PLANNER_PROMPT = """/no_think
+Tu es le planificateur d'outils de Nexus AI. Décide si la demande exige une
+action réelle ou seulement une réponse conversationnelle. Tu ne dois jamais
+lancer un scan à cause de la simple présence d'une cible : l'intention de
+l'utilisateur et le contexte priment. Choisis uniquement une cible candidate
+et les modules strictement utiles.
+
+Réponds uniquement avec un objet JSON :
+{"action":"chat|scan","target":null|string,"modules":[],"active":false,
+"rationale":"raison courte"}
+
+Modules OSINT passifs : email, username, domain, ip, phone, url, social,
+breach, github, discord, image, crypto.
+Modules pentest : ports, subdomains, fingerprint, ssl, dirs, cors,
+open-redirect, spring, js, s3, headers, dns-sec, graphql.
+Les modules pentest nécessitent une demande explicite et une autorisation.
+Si la demande est ambiguë, choisis chat et pose une question dans la réponse."""
+
+ALLOWED_AGENT_MODULES = frozenset(
+    {
+        "email", "username", "domain", "ip", "phone", "url", "social",
+        "breach", "github", "discord", "image", "crypto", "ports",
+        "subdomains", "fingerprint", "ssl", "dirs", "cors",
+        "open-redirect", "spring", "js", "s3", "headers", "dns-sec",
+        "graphql",
+    }
+)
+
+GUIDE_SOURCE_LINE = re.compile(
+    r"^\s*(?:[-*]\s*)?(?:\*\*)?source(?:\*\*)?\s*:\s*"
+    r"(?:osint|reporting|modules|web_security|identity_correlation|"
+    r"breach_analysis|pentest_methodology)\.md\s*$",
+    re.IGNORECASE,
+)
+
+
+def sanitize_model_answer(answer: str) -> str:
+    """Make small-model output readable and remove exact repeated material."""
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    blank = False
+    for raw_line in answer.replace("\r\n", "\n").replace("\r", "\n").splitlines():
+        line = raw_line.strip()
+        if GUIDE_SOURCE_LINE.match(line):
+            continue
+        line = re.sub(r"^\s{0,3}#{1,6}\s*", "", line)
+        line = line.replace("**", "").replace("__", "")
+        if not line:
+            if cleaned and not blank:
+                cleaned.append("")
+            blank = True
+            continue
+        blank = False
+        signature = re.sub(r"^[\s>*•+\-–—]+", "", line)
+        signature = re.sub(r"\s+", " ", signature).casefold()
+        if len(signature) >= 4 and signature in seen:
+            continue
+        if len(signature) >= 4:
+            seen.add(signature)
+        cleaned.append(line)
+    while cleaned and not cleaned[-1]:
+        cleaned.pop()
+    return "\n".join(cleaned).strip()
+
+
+def enforce_evidence_contract(answer: str, runtime_context: str | None) -> str:
+    """Apply non-negotiable attribution postconditions to model prose."""
+    if not runtime_context or "NON ATTRIBUÉ" not in runtime_context.upper():
+        return answer
+    context_upper = runtime_context.upper()
+    ambiguous_identity = (
+        "MÊME PSEUDO != MÊME IDENTITÉ" in context_upper
+        or "OCCURRENCES DE L'IDENTIFIANT UNIQUEMENT" in context_upper
+    )
+    if not ambiguous_identity:
+        return answer
+
+    observations: list[str] = []
+    candidate_urls = list(
+        dict.fromkeys(re.findall(r"https?://[^\s,)]+", runtime_context))
+    )
+    if candidate_urls:
+        examples = ", ".join(candidate_urls[:3])
+        suffix = f" (+{len(candidate_urls) - 3})" if len(candidate_urls) > 3 else ""
+        observations.append(
+            f"- SOCIAL · {len(candidate_urls)} URL candidate(s) : {examples}{suffix}. "
+            "Existence et propriété non confirmées."
+        )
+
+    username_count = re.search(
+        r"(?:Accounts found|Comptes trouvés)\s*:\s*(\d+)",
+        runtime_context,
+        re.IGNORECASE,
+    )
+    if username_count:
+        observations.append(
+            f"- USERNAME · {username_count.group(1)} correspondance(s) automatisée(s) "
+            "du pseudo ; aucune identité n'est confirmée."
+        )
+
+    breach_seen: set[tuple[str, str, str]] = set()
+    for line in runtime_context.splitlines():
+        match = re.match(
+            r"-\s*NON ATTRIBUÉ\s*\|\s*([^|]+)\s*\|\s*([^:]+):\s*(.+)",
+            line,
+            re.IGNORECASE,
+        )
+        if not match:
+            continue
+        source, label, value = (part.strip() for part in match.groups())
+        value = re.sub(r"\s*\(sévérité:.*$", "", value, flags=re.IGNORECASE)
+        item = (source, label, value)
+        if item in breach_seen:
+            continue
+        breach_seen.add(item)
+        observations.append(
+            f"- BREACH · {source} retourne « {label}: {value} » pour "
+            "l'identifiant saisi ; résultat non attribué à une personne."
+        )
+        if len(breach_seen) >= 4:
+            break
+
+    if not observations:
+        observations.append(
+            "- Des signaux automatisés existent pour l'identifiant saisi, sans "
+            "attribution d'identité possible."
+        )
+
+    report = [
+        "Verdict",
+        "NON ATTRIBUÉ — attribution impossible avec les données actuelles.",
+        "",
+        "Observations",
+        *observations,
+        "",
+        "Limites",
+        "- Même pseudo ≠ même identité ; une URL candidate n'est pas une preuve.",
+        "- Les volumes breach décrivent l'index du fournisseur, pas les comptes "
+        "ou appareils de la personne recherchée.",
+        "",
+        "Prochaine étape",
+        "- Vérifier un pivot public et discriminant autorisé (profil connu, email "
+        "ou domaine), puis corréler au moins deux attributs indépendants.",
+        "- Ne pas consulter ni exposer de données de fuite sensibles.",
+    ]
+    return "\n".join(report)
+
+
+@dataclass(frozen=True)
+class AgentDecision:
+    action: str = "chat"
+    target: str | None = None
+    target_type: str | None = None
+    modules: tuple[str, ...] = ()
+    active: bool = False
+    rationale: str = ""
 
 
 @dataclass(frozen=True)
@@ -85,6 +275,78 @@ class NexusAI:
     def reset(self) -> None:
         self.history.clear()
 
+    async def plan(
+        self, message: str, candidate_targets: list[tuple[str, str]]
+    ) -> AgentDecision:
+        """Let the model decide whether Nexus should act and which tools to use."""
+        if not self.config.enabled or not candidate_targets:
+            return AgentDecision()
+
+        candidates = [
+            {"target": target, "type": target_type}
+            for target, target_type in candidate_targets
+        ]
+        payload = {
+            "model": self.config.model,
+            "messages": [
+                {"role": "system", "content": PLANNER_PROMPT},
+                *self.history[-6:],
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {"request": message, "candidate_targets": candidates},
+                        ensure_ascii=False,
+                    ),
+                },
+            ],
+            "temperature": 0,
+            "max_tokens": 220,
+            "stream": False,
+            "response_format": {"type": "json_object"},
+        }
+        try:
+            data = await self._post_completion(payload)
+            content = str(data["choices"][0]["message"]["content"]).strip()
+            match = re.search(r"\{.*\}", content, flags=re.DOTALL)
+            raw = json.loads(match.group(0) if match else content)
+        except (
+            httpx.HTTPError, OSError, ValueError, KeyError, IndexError, TypeError
+        ):
+            return AgentDecision()
+
+        if str(raw.get("action", "")).lower() != "scan":
+            return AgentDecision(
+                rationale=str(raw.get("rationale", ""))[:240]
+            )
+
+        requested_target = str(raw.get("target") or "")
+        selected = next(
+            (
+                (target, target_type)
+                for target, target_type in candidate_targets
+                if target.casefold() == requested_target.casefold()
+            ),
+            None,
+        )
+        if selected is None:
+            return AgentDecision(rationale="Cible proposée hors des candidates.")
+
+        modules = tuple(
+            dict.fromkeys(
+                str(module).lower()
+                for module in raw.get("modules", [])
+                if str(module).lower() in ALLOWED_AGENT_MODULES
+            )
+        )
+        return AgentDecision(
+            action="scan",
+            target=selected[0],
+            target_type=selected[1],
+            modules=modules,
+            active=bool(raw.get("active", False)),
+            rationale=str(raw.get("rationale", ""))[:240],
+        )
+
     async def answer(self, message: str, runtime_context: str | None = None) -> str:
         message = message.strip()
         if not message:
@@ -96,7 +358,9 @@ class NexusAI:
                 if answer:
                     self._remember(message, answer)
                     return answer
-            except (httpx.HTTPError, OSError, ValueError):
+            except (
+                httpx.HTTPError, OSError, ValueError, KeyError, IndexError, TypeError
+            ):
                 pass
 
         answer = self._core_answer(message)
@@ -129,6 +393,15 @@ class NexusAI:
             "max_tokens": self.config.max_tokens,
             "stream": False,
         }
+        data = await self._post_completion(payload)
+        return enforce_evidence_contract(
+            sanitize_model_answer(
+                str(data["choices"][0]["message"]["content"])
+            ),
+            runtime_context,
+        )
+
+    async def _post_completion(self, payload: dict[str, object]) -> dict:
         async with httpx.AsyncClient(timeout=self.config.timeout) as client:
             response = await client.post(
                 f"{self.config.endpoint}/chat/completions",
@@ -136,8 +409,7 @@ class NexusAI:
                 headers={"Authorization": f"Bearer {self.config.api_key}"},
             )
             response.raise_for_status()
-        data = response.json()
-        return str(data["choices"][0]["message"]["content"]).strip()
+        return response.json()
 
     def _remember(self, user: str, assistant: str) -> None:
         self.history.extend(
