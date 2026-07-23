@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import re
-import shutil
-import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -19,48 +16,11 @@ from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.reactive import reactive
 from textual.widgets import (Footer, Header, Input, ListItem, ListView, Static)
 
+from .ai import NexusAI
 from .correlate import (PENTEST_TARGET_TYPES, detect_target_type, scan_chained,
                         scan_full, scan_one)
 from .external import find_tool
 from .models import ScanResult
-
-CHAT_SESSION = "nexus-tui-chat"
-def _find_opencode() -> str:
-    configured = os.environ.get("OPENCODE_BIN", "").strip()
-    candidates = [
-        configured,
-        shutil.which("opencode") or "",
-        str(Path.home() / ".opencode" / "bin" / "opencode"),
-        str(Path.home() / ".local" / "bin" / "opencode"),
-        str(Path.home() / ".bun" / "bin" / "opencode"),
-    ]
-    return next((candidate for candidate in candidates if candidate and Path(candidate).is_file()), "opencode")
-
-
-OPENCODE_BIN = _find_opencode()
-CHAT_MODEL = os.environ.get("CHAT_MODEL", "").strip()
-
-
-def _friendly_provider_error(output: str) -> str | None:
-    lowered = output.lower()
-    provider_failures = (
-        "no provider available",
-        "no providers available",
-        "provider not found",
-        "provider is not configured",
-        "no provider configured",
-    )
-    if not any(message in lowered for message in provider_failures):
-        return None
-    return (
-        "Assistant IA non configuré.\n\n"
-        "Dans un terminal, lance :\n"
-        "  opencode auth login\n"
-        "  opencode auth list\n\n"
-        "Puis choisis le modèle avec, par exemple :\n"
-        "  export CHAT_MODEL='provider/model'\n\n"
-        "Les scans OSINT saisis dans ce chat fonctionnent même sans provider."
-    )
 
 # Expressions pour detecter les cibles OSINT directement (fallback si l'IA refuse)
 RE_EMAIL = re.compile(r'[\w\.-]+@[\w\.-]+\.\w{2,}')
@@ -72,6 +32,15 @@ RE_REFUSAL = re.compile(
     r"doxxing|surveillance|refuse|éthique|illégal|illégal|"
     r"je ne peux t'aider|je ne peux pas vous aider"
     r"|I can't|I don't have|I cannot|I'm not able|je ne peux pas vous aider)", re.IGNORECASE)
+RE_ACTIVE_INTENT = re.compile(
+    r"\b(pentest|audit(?:er)?|scan actif|vuln(?:érabilité|erabilite)?|explo(?:it|iter))\b",
+    re.IGNORECASE,
+)
+RE_AUTHORIZATION = re.compile(
+    r"\b(j['’ ]autorise|autorisé|autorisee|m['’ ]appartient|mon (?:site|lab|réseau|reseau)|"
+    r"permission|scope autorisé|scope autorise)\b",
+    re.IGNORECASE,
+)
 
 # Reseaux sociaux connus pour extraire les usernames des URLs
 SOCIAL_PATTERNS = {
@@ -932,65 +901,10 @@ class OsintApp(App):
             out.append("[#2a2a2a]─[/]" * 40)
         return "\n".join(out) + "\n"
 
-    def _strip_ansi(self, text: str) -> str:
-        return re.sub(r'\x1b\[[0-9;?]*[a-zA-Z]|\x1b[()][A-Z]|\x1b\].*?\x07|\x1b\[[0-9;?]*', '', text)
-
-    async def _run_opencode(self, msg: str, is_first: bool = False,
-                             progress_cb=None) -> str:
-        project_dir = Path(__file__).resolve().parent.parent
-        args = [OPENCODE_BIN, "run", msg, "--auto",
-                "--agent", "build",
-                "--print-logs", "--log-level", "ERROR"]
-        if CHAT_MODEL:
-            args.extend(["--model", CHAT_MODEL])
-        if not is_first:
-            args.append("--continue")
-        proc = None
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *args,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                cwd=str(project_dir),
-            )
-
-            response_parts = []
-            while True:
-                line = await asyncio.wait_for(proc.stdout.readline(), timeout=600)
-                if not line:
-                    break
-                text = line.decode("utf-8", errors="replace")
-                raw = self._strip_ansi(text).strip()
-                if not raw or raw.startswith("timestamp=") or raw.startswith(">"):
-                    continue
-                response_parts.append(raw)
-                if progress_cb:
-                    progress_cb(raw)
-
-            await proc.wait()
-
-        except FileNotFoundError:
-            return (
-                "Assistant IA non installé.\n\n"
-                "Relance l'installation avec :\n"
-                "  ./install.sh\n\n"
-                "Puis configure un fournisseur :\n"
-                "  opencode auth login"
-            )
-        except asyncio.TimeoutError:
-            if proc and proc.returncode is None:
-                proc.kill()
-            return "[err]✗ L'assistant a mis trop de temps à répondre (>10 min)[/err]"
-        except Exception as e:
-            if proc and proc.returncode is None:
-                proc.kill()
-            return f"[err]✗ Erreur: {e}[/err]"
-
-        result = "\n".join(response_parts).strip()
-        provider_error = _friendly_provider_error(result)
-        if provider_error:
-            return provider_error
-        return result or "[dim]Pas de réponse[/dim]"
+    async def _run_nexus_ai(self, msg: str) -> str:
+        if not hasattr(self, "_nexus_ai"):
+            self._nexus_ai = NexusAI()
+        return await self._nexus_ai.answer(msg)
 
     def _detect_targets(self, msg: str) -> list[tuple[str, str]]:
         """Detect OSINT targets in a message. Returns [(target, type), ...]."""
@@ -1079,11 +993,12 @@ class OsintApp(App):
         scroll_ct = self.query_one("#chat-scroll")
         if not hasattr(self, "_chat_history"):
             self._chat_history = []
-            self._chat_first_msg = True
 
         self._chat_history.append({"role": "user", "content": msg})
 
         targets = self._detect_targets(msg)
+        if RE_AUTHORIZATION.search(msg):
+            self._pentest_authorized = True
         SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
         start = __import__("time").time()
         last_status = ""
@@ -1115,6 +1030,10 @@ class OsintApp(App):
         if targets:
             target, _ = targets[0]
             _set_status(f"> {target}")
+            wants_active = bool(RE_ACTIVE_INTENT.search(msg))
+            active_allowed = wants_active and getattr(
+                self, "_pentest_authorized", False
+            )
             sem = asyncio.Semaphore(4)
 
             async def _run(cat: str, mod: str) -> tuple[str, ScanResult]:
@@ -1148,7 +1067,11 @@ class OsintApp(App):
                             "dirs", "spring", "cors", "dns-sec", "graphql"}
 
             tasks = [asyncio.create_task(_run("osint", m)) for m in selected_osint]
-            tasks += [asyncio.create_task(_run("pentest", m)) for m in pentest_mods]
+            if active_allowed:
+                tasks += [
+                    asyncio.create_task(_run("pentest", m))
+                    for m in pentest_mods
+                ]
 
             all_results = {}
             for fut in asyncio.as_completed(tasks):
@@ -1168,11 +1091,16 @@ class OsintApp(App):
                 )
             else:
                 response = "[dim]No results[/dim]"
+            if wants_active and not active_allowed:
+                response += (
+                    "\n\n[#f59e0b]Pentest actif prêt.[/] Confirme une seule fois "
+                    "que la cible est autorisée (ex. « j’autorise ce lab »), puis "
+                    "relance la demande. La confirmation restera valable pendant "
+                    "cette session."
+                )
         else:
-            response = await self._run_opencode(
-                msg, is_first=self._chat_first_msg, progress_cb=_set_status)
+            response = await self._run_nexus_ai(msg)
             timer.stop()
-            self._chat_first_msg = False
 
             # Tronquer les reponses trop longues ou bruites
             RESP_MAX_LINES = 200

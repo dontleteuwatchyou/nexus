@@ -35,7 +35,7 @@ interface (`ScanResult`) over three tiers of tooling:
 
 ```bash
 chmod +x install.sh
-./install.sh                                 # Nexus + dépendances Python + runtime IA
+./install.sh                                 # Nexus + dépendances Python + Nexus AI Core
 ./install.sh --with-tools                    # + Mr.Holmes, toutatis et zehef
 ./install.sh --dev                           # + pytest, ruff, build et outils de test
 ./install.sh --install-system                # + dig, whois et git via le gestionnaire OS
@@ -170,31 +170,25 @@ External tools and Chat.
 | `Ctrl+L`  | Clear screen                        |
 | `Ctrl+C`  | Quit                                |
 
-### Chat IA
+### Nexus AI
 
-The Chat tab uses [OpenCode](https://opencode.ai/docs/) for generative answers.
-The default installer installs its runtime when Bun or npm is available. Nexus
-does not force a provider/model anymore: OpenCode selects an available default
-or free model, which also avoids failures caused by a stale hard-coded model.
+The Chat tab now uses the provider-independent **Nexus AI** engine. Nexus AI
+Core requires no account, API key, GPU or language model: it detects targets,
+routes Nexus tools and remains useful on low-end computers.
 
-Connecting your own provider is optional:
-
-```bash
-opencode auth login
-opencode auth list
-```
-
-To force a specific model instead of OpenCode's selection:
+Generative answers are optional. Nexus can connect to any local
+OpenAI-compatible server (llama.cpp, an Ollama-compatible proxy, LM Studio,
+etc.):
 
 ```bash
-export CHAT_MODEL="provider/model"
-nexus
+export NEXUS_AI_ENDPOINT="http://127.0.0.1:8080/v1"
+export NEXUS_AI_MODEL="local"
+nexus --chat
 ```
 
-If a forced model has no matching provider, the Chat tab displays actionable
-setup commands instead of the opaque `No provider available` error. Messages
-containing an email, username, domain, IP or URL always trigger Nexus scans
-locally without requiring a generative provider.
+If the local server is absent, Nexus automatically falls back to Core mode;
+OSINT scans continue to work. Conversation memory stays in the running process
+and is bounded to avoid unrestrained RAM growth.
 
 ## Architecture
 
@@ -241,7 +235,6 @@ guidance instead of failing.
 | `dig` | DNS records and DNSSEC | `bind` | `dnsutils` | `bind-utils` |
 | `whois` | domain/IP registration | `whois` | `whois` | `whois` |
 | `git` | managed optional tools | `git` | `git` | `git` |
-| Bun or npm | OpenCode Chat runtime | `bun` / `npm` | `bun` / `npm` | `bun` / `npm` |
 
 Use `./install.sh --install-system` to install `dig`, `whois` and `git` with a
 supported package manager. It requests `sudo` only for this explicit option.
@@ -271,9 +264,8 @@ Development dependencies (`./install.sh --dev`) are `pytest`,
 
 ### Optional runtime components
 
-- OpenCode is installed by default when Bun/npm is present. It can select an
-  available free/default model; provider authentication remains optional and
-  explicit through `opencode auth login`.
+- A local OpenAI-compatible model server is optional. Nexus AI Core works
+  without one and never requires a paid provider.
 - `toutatis`, `zehef`, and Mr.Holmes are managed by
   `./install.sh --with-tools`.
 - The large EXTERNAL catalog (Nmap, Nuclei, ffuf, SQLMap, Hashcat, Aircrack-ng,
@@ -287,8 +279,10 @@ Development dependencies (`./install.sh --dev`) are `pytest`,
 | `OSINT_DEFAULT_REGION` | ISO-3166 alpha-2 default for national phone numbers; defaults to `BE` |
 | `GH_TOKEN` / `GITHUB_TOKEN` | raises GitHub public API rate limits |
 | `IG_SESSION_ID` | enables authenticated Instagram features in Toutatis |
-| `CHAT_MODEL` | optional OpenCode model override (`provider/model`) |
-| `OPENCODE_BIN` | custom path to the OpenCode executable |
+| `NEXUS_AI_ENDPOINT` | local OpenAI-compatible endpoint; defaults to `http://127.0.0.1:8080/v1` |
+| `NEXUS_AI_MODEL` | model identifier exposed by the local server |
+| `NEXUS_AI_LOCAL` | set to `0` to force model-free Core mode |
+| `NEXUS_AI_TIMEOUT` | local inference timeout in seconds |
 | `NEXUS_VENV` | custom virtual-environment location for the installer |
 | `NEXUS_BIN_DIR` | custom launcher directory; defaults to `~/.local/bin` |
 

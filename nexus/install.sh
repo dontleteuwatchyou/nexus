@@ -7,7 +7,6 @@ BIN_DIR="${NEXUS_BIN_DIR:-$HOME/.local/bin}"
 SYSTEM_PYTHON="${PYTHON:-python3}"
 WITH_TOOLS=false
 WITH_DEV=false
-WITH_AI=true
 INSTALL_SYSTEM=false
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
@@ -26,7 +25,6 @@ Usage: ./install.sh [options]
 Options:
   --with-tools       Install managed optional tools (toutatis, zehef, Mr.Holmes)
   --dev              Install development/test dependencies
-  --without-ai       Do not install the OpenCode chat runtime
   --install-system   Install missing dig/whois/git packages with the OS package manager
   -h, --help         Show this help
 
@@ -42,7 +40,6 @@ while (($#)); do
     case "$1" in
         --with-tools) WITH_TOOLS=true ;;
         --dev) WITH_DEV=true ;;
-        --without-ai) WITH_AI=false ;;
         --install-system) INSTALL_SYSTEM=true ;;
         -h|--help) usage; exit 0 ;;
         *) printf '%s\n' "Unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -134,30 +131,6 @@ ln -sfn "$VENV_DIR/bin/nexus" "$BIN_DIR/nexus"
 ln -sfn "$VENV_DIR/bin/osint" "$BIN_DIR/osint"
 ok "Launchers installed: $BIN_DIR/nexus and $BIN_DIR/osint"
 
-if "$WITH_AI"; then
-    if command -v opencode >/dev/null 2>&1; then
-        ok "OpenCode already installed ($(opencode --version 2>/dev/null | head -n1))"
-    elif command -v bun >/dev/null 2>&1; then
-        info "Installing the OpenCode chat runtime with Bun"
-        bun install --global opencode-ai
-        if [[ -x "$HOME/.bun/bin/opencode" ]]; then
-            ln -sfn "$HOME/.bun/bin/opencode" "$BIN_DIR/opencode"
-        fi
-    elif command -v npm >/dev/null 2>&1; then
-        info "Installing the OpenCode chat runtime with npm"
-        npm install --global --prefix "$HOME/.local" opencode-ai
-    else
-        warn "Bun/npm not found; the TUI chat runtime was not installed."
-        warn "Install OpenCode later, or rerun after installing Bun/npm."
-    fi
-
-    if [[ -x "$BIN_DIR/opencode" ]] || command -v opencode >/dev/null 2>&1; then
-        ok "OpenCode chat runtime available"
-        info "OpenCode will select an available default/free model."
-        info "Optional: run 'opencode auth login' to connect your own provider."
-    fi
-fi
-
 if "$WITH_TOOLS"; then
     info "Installing managed optional OSINT tools"
     for package in toutatis zehef; do
@@ -190,6 +163,6 @@ esac
 printf '\n%sInstallation complete.%s\n' "$C_GREEN" "$C_RESET"
 printf '  TUI:       %s\n' "$BIN_DIR/nexus"
 printf '  Modules:   %s --list-modules\n' "$BIN_DIR/nexus"
-printf '  Chat:      available (optional provider: opencode auth login)\n'
+printf '  Chat:      Nexus AI Core (local model optional)\n'
 printf '  Reports:   %s\n' "$HOME/.osint-toolkit/output"
 printf '\n%sExternal tools are optional and are detected at runtime.%s\n' "$C_DIM" "$C_RESET"

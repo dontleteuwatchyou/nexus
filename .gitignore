@@ -29,3 +29,5 @@ output/
 reports/
 targets*.txt
 *pentest*.txt
+nexus/training/ready.jsonl
+nexus/training/raw/

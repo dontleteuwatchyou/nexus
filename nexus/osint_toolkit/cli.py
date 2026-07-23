@@ -2,7 +2,7 @@
 
 Examples:
   nexus                                 # launch TUI
-  nexus --chat                          # launch opencode AI assistant
+  nexus --chat                          # launch Nexus AI in the TUI
   nexus test@gmail.com                  # auto-detect OSINT module
   nexus -m domain example.com
   nexus -c pentest -m ports example.com
@@ -14,14 +14,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
-import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .correlate import (OSINT_MODULES, PENTEST_MODULES, detect_target_type,
-                         scan_chained, scan_full, scan_one)
+from .correlate import detect_target_type, scan_chained, scan_full, scan_one
 from .models import ScanResult
 from .render import (banner, console, full_scan_summary, progress_bar,
                      quick_progress, render_result, section)
@@ -277,7 +274,7 @@ def main() -> None:
         epilog="""
 Examples:
   nexus                                          # launch TUI
-  nexus --chat                                   # launch opencode AI assistant
+  nexus --chat                                   # launch Nexus AI in the TUI
   nexus test@gmail.com                           # auto OSINT
   nexus -m domain example.com
   nexus -c pentest -m ports example.com
@@ -326,7 +323,7 @@ Examples:
     parser.add_argument("-q", "--quiet", action="store_true", help="No banner")
     parser.add_argument("--tui", action="store_true", help="Force TUI mode")
     parser.add_argument("--chat", action="store_true",
-                         help="Lancer opencode (assistant IA OSINT/pentest)")
+                         help="Lancer Nexus AI dans la TUI")
     parser.add_argument("--list-modules", action="store_true",
                          help="List available modules and exit")
     parser.add_argument("--check-tools", action="store_true",
@@ -381,16 +378,8 @@ Examples:
         return
 
     if args.chat:
-        project_dir = Path(__file__).resolve().parent.parent
-        opencode_bin = os.environ.get("OPENCODE_BIN", "opencode")
-        try:
-            subprocess.run([opencode_bin, str(project_dir)], check=True)
-        except FileNotFoundError:
-            console.print("[err]✗ opencode n'est pas installé[/err]")
-            console.print("  Installe-le depuis https://opencode.ai")
-            sys.exit(1)
-        except subprocess.CalledProcessError:
-            pass
+        from .tui import run as run_tui
+        run_tui()
         return
 
     if args.tui or not args.target:
