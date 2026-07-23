@@ -16,7 +16,12 @@ from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.reactive import reactive
 from textual.widgets import (Footer, Header, Input, ListItem, ListView, Static)
 
-from .ai import NexusAI, collect_live_metrics, format_live_metrics
+from .ai import (
+    NexusAI,
+    collect_live_metrics,
+    format_live_metrics,
+    terminal_plain_text,
+)
 from .correlate import (OSINT_MODULES, PENTEST_MODULES, PENTEST_TARGET_TYPES,
                         detect_target_type, scan_chained, scan_full, scan_one)
 from .external import find_tool
@@ -908,7 +913,10 @@ class OsintApp(App):
         out = []
         for m in messages:
             role = m["role"]
-            content = escape(m["content"].strip())
+            raw_content = m["content"].strip()
+            if role == "assistant":
+                raw_content = terminal_plain_text(raw_content)
+            content = escape(raw_content)
             if role == "user":
                 out.append(f"[bold #fbbf24]▸ Toi[/]\n[#e5e5e5]{content}[/]")
             elif role == "assistant":

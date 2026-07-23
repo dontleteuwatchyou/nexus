@@ -7,6 +7,7 @@ from .engine import (
     ReviewDecision,
     enforce_evidence_contract,
     sanitize_model_answer,
+    terminal_plain_text,
 )
 from .performance import (
     AIProfile,
@@ -33,4 +34,5 @@ __all__ = [
     "format_live_metrics",
     "sanitize_model_answer",
     "select_profile",
+    "terminal_plain_text",
 ]

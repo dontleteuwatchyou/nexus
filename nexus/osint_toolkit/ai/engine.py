@@ -124,17 +124,38 @@ EXPLICIT_SCAN_INTENT = re.compile(
 )
 
 
+def terminal_plain_text(text: str) -> str:
+    """Convert common Markdown decoration to readable terminal plain text."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(
+        r"!\[([^\]]*)\]\((https?://[^)]+)\)",
+        lambda match: f"{match.group(1)}: {match.group(2)}",
+        text,
+    )
+    text = re.sub(
+        r"\[([^\]]+)\]\((https?://[^)]+)\)",
+        lambda match: f"{match.group(1)}: {match.group(2)}",
+        text,
+    )
+    text = re.sub(r"^\s*```[^\n]*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s{0,3}#{1,6}\s*", "", text, flags=re.MULTILINE)
+    return (
+        text.replace("**", "")
+        .replace("__", "")
+        .replace("~~", "")
+        .replace("`", "")
+    )
+
+
 def sanitize_model_answer(answer: str) -> str:
     """Make small-model output readable and remove exact repeated material."""
     cleaned: list[str] = []
     seen: set[str] = set()
     blank = False
-    for raw_line in answer.replace("\r\n", "\n").replace("\r", "\n").splitlines():
+    for raw_line in terminal_plain_text(answer).splitlines():
         line = raw_line.strip()
         if GUIDE_SOURCE_LINE.match(line):
             continue
-        line = re.sub(r"^\s{0,3}#{1,6}\s*", "", line)
-        line = line.replace("**", "").replace("__", "")
         line = re.sub(
             r"\bLa source\s*(?:\[[^\]]*\])?\s*indique que\b",
             "En OSINT,",
