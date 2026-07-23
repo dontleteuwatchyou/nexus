@@ -27,14 +27,6 @@ GPU_LAYERS="${NEXUS_AI_GPU_LAYERS:-${AUTO_PROFILE[5]}}"
 GPU_NAME="${AUTO_PROFILE[6]}"
 VRAM="${AUTO_PROFILE[7]}"
 
-if ((GPU_LAYERS > 0)); then
-    IMAGE="${NEXUS_AI_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}"
-    GPU_ARGS=(--gpus all)
-else
-    IMAGE="${NEXUS_AI_IMAGE:-ghcr.io/ggml-org/llama.cpp:server}"
-    GPU_ARGS=()
-fi
-
 command -v docker >/dev/null 2>&1 || {
     if [[ "$ACTION" == "profile" ]]; then
         PYTHONPATH="$PROJECT_DIR${PYTHONPATH:+:$PYTHONPATH}" \
@@ -46,6 +38,36 @@ command -v docker >/dev/null 2>&1 || {
     printf 'Docker is required for the local model launcher.\n' >&2
     exit 1
 }
+
+DOCKER_GPU=false
+if ((GPU_LAYERS > 0)); then
+    if docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -qi nvidia \
+        || [[ -s /etc/cdi/nvidia.yaml || -s /var/run/cdi/nvidia.yaml ]]; then
+        DOCKER_GPU=true
+    elif [[ -z "${NEXUS_AI_PROFILE:-}" || "${NEXUS_AI_PROFILE:-}" == "auto" ]]; then
+        printf 'GPU NVIDIA detected, but unavailable in Docker; using compact CPU fallback.\n' >&2
+        mapfile -t AUTO_PROFILE < <(
+            PYTHONPATH="$PROJECT_DIR${PYTHONPATH:+:$PYTHONPATH}" \
+                "$PYTHON" -c \
+                'from osint_toolkit.ai.performance import main; main()' \
+                --profile compact --values
+        )
+        PROFILE="${AUTO_PROFILE[0]}"
+        MODEL="${NEXUS_AI_GGUF:-${AUTO_PROFILE[1]}}"
+        CONTEXT="${NEXUS_AI_CONTEXT:-${AUTO_PROFILE[2]}}"
+        MAX_TOKENS="${NEXUS_AI_MAX_TOKENS:-${AUTO_PROFILE[3]}}"
+        THREADS="${NEXUS_AI_THREADS:-${AUTO_PROFILE[4]}}"
+        GPU_LAYERS=0
+    fi
+fi
+
+if ((GPU_LAYERS > 0)); then
+    IMAGE="${NEXUS_AI_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}"
+    GPU_ARGS=(--gpus all)
+else
+    IMAGE="${NEXUS_AI_IMAGE:-ghcr.io/ggml-org/llama.cpp:server}"
+    GPU_ARGS=()
+fi
 
 case "$ACTION" in
     start)

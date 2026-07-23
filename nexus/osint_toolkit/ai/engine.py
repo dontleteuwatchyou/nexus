@@ -158,5 +158,6 @@ class NexusAI:
         return (
             "Le moteur conversationnel local n’est pas démarré. Les scans Nexus "
             "restent disponibles : saisis directement une cible. Pour le mode IA, "
-            "lance `./scripts/local_ai.sh start`."
+            "lance `nexus-ai start`. Le premier lancement télécharge l’image CUDA "
+            "et le modèle sélectionné pour ton matériel."
         )

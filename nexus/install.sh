@@ -129,7 +129,8 @@ ok "Python runtime verified"
 mkdir -p "$BIN_DIR" "$HOME/.osint-toolkit/output" "$HOME/.osint-toolkit/tools"
 ln -sfn "$VENV_DIR/bin/nexus" "$BIN_DIR/nexus"
 ln -sfn "$VENV_DIR/bin/osint" "$BIN_DIR/osint"
-ok "Launchers installed: $BIN_DIR/nexus and $BIN_DIR/osint"
+ln -sfn "$PROJECT_DIR/scripts/local_ai.sh" "$BIN_DIR/nexus-ai"
+ok "Launchers installed: $BIN_DIR/nexus, $BIN_DIR/osint and $BIN_DIR/nexus-ai"
 
 if "$WITH_TOOLS"; then
     info "Installing managed optional OSINT tools"
@@ -164,5 +165,7 @@ printf '\n%sInstallation complete.%s\n' "$C_GREEN" "$C_RESET"
 printf '  TUI:       %s\n' "$BIN_DIR/nexus"
 printf '  Modules:   %s --list-modules\n' "$BIN_DIR/nexus"
 printf '  Chat:      Nexus AI Core (local model optional)\n'
+printf '  Local AI:  %s start\n' "$BIN_DIR/nexus-ai"
+printf '  Monitor:   %s --ai-monitor\n' "$BIN_DIR/nexus"
 printf '  Reports:   %s\n' "$HOME/.osint-toolkit/output"
 printf '\n%sExternal tools are optional and are detected at runtime.%s\n' "$C_DIM" "$C_RESET"

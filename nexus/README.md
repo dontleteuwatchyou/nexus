@@ -199,9 +199,9 @@ OpenAI-compatible server (llama.cpp, an Ollama-compatible proxy, LM Studio,
 etc.):
 
 ```bash
-./scripts/local_ai.sh start               # Docker + modèle Qwen3 adapté au matériel
-./scripts/local_ai.sh status
-./scripts/local_ai.sh monitor
+nexus-ai start                            # Docker + modèle Qwen3 adapté au matériel
+nexus-ai status
+nexus-ai monitor
 export NEXUS_AI_ENDPOINT="http://127.0.0.1:8080/v1"
 export NEXUS_AI_MODEL="local"
 nexus --chat
