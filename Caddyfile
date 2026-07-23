@@ -1,0 +1,21 @@
+{$DUCKDNS_SUBDOMAIN}.duckdns.org {
+	encode zstd gzip
+
+	@api path /api/*
+	handle @api {
+		reverse_proxy nexus-api:8000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} {path}/ /index.html
+		header {
+			Content-Security-Policy "default-src 'self'; connect-src 'self' https://discord.com https://dns.google https://api.github.com https://ipwho.is https://mempool.space; img-src 'self' data: https:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+			Permissions-Policy "camera=(), microphone=(), geolocation=()"
+			Referrer-Policy "strict-origin-when-cross-origin"
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+		}
+		file_server
+	}
+}

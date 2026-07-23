@@ -100,7 +100,7 @@ fichier de cibles ou résultat d’audit local n’est publié dans ce dépôt.
 
 ```bash
 cd nexus
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,web]"
 ruff check --select E9,F63,F7,F82 osint_toolkit tests
 pytest
 python -m build
@@ -108,6 +108,16 @@ python -m build
 
 Le Web Lab ne requiert aucune compilation. `web/` contient les sources et
 `docs/` la copie déployée.
+
+## Auto-hébergement Web
+
+Une instance complète peut être hébergée localement avec Docker, DuckDNS,
+Caddy/HTTPS et l’API FastAPI authentifiée. Dans ce mode, le Web Lab peut appeler
+les modules OSINT passifs du moteur Python sans exposer les clés API dans le
+navigateur.
+
+Voir [SELF_HOSTING.md](SELF_HOSTING.md) pour la configuration, les redirections
+de ports et les précautions de sécurité.
 
 ## Avertissement légal
 
