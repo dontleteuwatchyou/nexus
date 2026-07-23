@@ -19,6 +19,7 @@ const MODULES = {
     ["social", "⌘", "Social", "Profils et moteurs spécialisés"],
     ["breach", "△", "Fuites", "Sources de compromission"],
     ["github", "◐", "GitHub", "Profil et activité publique"],
+    ["discord", "◈", "Discord", "Username, ancien tag ou ID utilisateur"],
     ["image", "▧", "Image", "Recherche inversée et forensic"],
     ["crypto", "₿", "Crypto", "Explorateurs de blockchain"],
     ["people", "◇", "Personne", "Recherche exacte et corrélation"]
@@ -45,6 +46,7 @@ const DETAILS = {
   social: ["OSINT · SOCIAL", "Empreinte sociale", "Pivots adaptés au pseudo, au nom ou à l’adresse email."],
   breach: ["OSINT · BREACH", "Exposition dans les fuites", "Services publics et vérifications manuelles de compromission."],
   github: ["OSINT · GITHUB", "Intelligence GitHub", "Profil, dépôts, activité, clés et recherche de commits publics."],
+  discord: ["OSINT · DISCORD", "Discord tag checker", "Valide localement un username, un ancien tag ou un ID et prépare des vérifications publiques."],
   image: ["OSINT · IMAGE", "Recherche visuelle", "Moteurs de recherche inversée et outils de métadonnées."],
   crypto: ["OSINT · CRYPTO", "Analyse de wallet", "Explorateurs publics Bitcoin et Ethereum."],
   people: ["OSINT · PEOPLE", "Recherche de personne", "Requêtes exactes, profils professionnels et publications."],
@@ -185,6 +187,32 @@ function usernameFindings(target) {
   ];
 }
 
+function discordFindings(target) {
+  const clean = target.trim();
+  const snowflake = /^\d{17,20}$/.test(clean);
+  const legacy = /^.{2,32}#\d{4}$/.test(clean);
+  const username = clean.replace(/^@/, "").toLowerCase();
+  const modern = /^[a-z0-9._]{2,32}$/.test(username) && !username.includes("..");
+  if (!snowflake && !legacy && !modern) {
+    throw new Error("Identifiant Discord invalide : utilisez @username, nom#1234 ou un ID de 17 à 20 chiffres.");
+  }
+  const normalized = modern ? username : clean;
+  const kind = snowflake ? "ID utilisateur (snowflake)" : legacy ? "ancien tag Discord" : "nouveau username Discord";
+  const rows = [
+    finding("Discord", "Type détecté", kind, "", "Validation effectuée localement.", "high"),
+    finding("Discord", "Valeur normalisée", normalized, "", "", "high"),
+    finding("Vérification manuelle", "discord.id", "Ouvrir le lookup", `https://discord.id/?prefill=${encode(normalized)}`, "Service tiers ; vérifier ses conditions."),
+    finding("Recherche publique", "Recherche exacte", `"${normalized}" Discord`, `https://www.google.com/search?q=${encode(`"${normalized}" Discord`)}`),
+    finding("Limites", "Existence / disponibilité", "Non vérifiable via l’API publique Discord sans authentification", "", "Un résultat ou un tag similaire ne prouve pas l’identité.", "low")
+  ];
+  if (snowflake) {
+    const createdAt = new Date(Number((BigInt(clean) >> 22n) + 1420070400000n)).toISOString();
+    rows.splice(2, 0, finding("Snowflake", "Date de création intégrée", createdAt, "", "Métadonnée décodée localement depuis l’ID.", "high"));
+    rows.splice(3, 0, finding("Vérification manuelle", "DiscordLookup", "Ouvrir le lookup", `https://discordlookup.com/user/${encode(clean)}`, "Service tiers."));
+  }
+  return rows;
+}
+
 function domainFindings(target) {
   const host = hostOf(target), q = encode(host);
   return [
@@ -301,6 +329,7 @@ function osintFindings(target, module, detected) {
   if (chosen === "crypto" || chosen.startsWith("crypto-")) return cryptoFindings(target, detected.startsWith("crypto-") ? detected : "crypto-btc");
   if (chosen === "image") return imageFindings(target);
   if (chosen === "github") return githubFindings(target);
+  if (chosen === "discord") return discordFindings(target);
   if (chosen === "breach") return breachFindings(target);
   if (chosen === "social") return socialFindings(target, detected);
   throw new Error("Type de cible non reconnu pour ce module.");

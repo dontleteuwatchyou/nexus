@@ -67,7 +67,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Items per category. (key, label, description)
 OSINT_ITEMS: list[tuple[str, str, str]] = [
-    ("fullscan",  "✦  Full OSINT",  "All OSINT modules — email · username · domain · ip · phone · web · social · breach · github"),
+    ("fullscan",  "✦  Full OSINT",  "All applicable OSINT modules"),
     ("auto",      "▸  Auto-scan",   "Detect target type, chain pivots"),
     ("email",     "  ✉  Email",     "name@domain.com"),
     ("username",  "  @  Username",  "johndoe"),
@@ -78,6 +78,7 @@ OSINT_ITEMS: list[tuple[str, str, str]] = [
     ("social",    "  ⌖  Social",    "johndoe (username)"),
     ("breach",    "  ⚠  Breach",    "name@domain.com / username"),
     ("github",    "  ⌬  GitHub",    "username"),
+    ("discord",   "  ◈  Discord",   "@username / name#1234 / user ID"),
     ("image",     "  ▣  Image",     "https://…/photo.jpg (reverse image search)"),
     ("crypto",    "  ₿  Crypto",    "BTC / ETH address"),
 ]
@@ -776,6 +777,7 @@ class OsintApp(App):
         "social":   "johndoe",
         "breach":   "name@domain.com / username",
         "github":   "username",
+        "discord":  "@username / name#1234 / user ID",
         "image":    "https://…/photo.jpg",
         "crypto":   "BTC / ETH address",
     }

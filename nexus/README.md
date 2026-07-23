@@ -43,6 +43,7 @@ nexus 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa      # auto crypto (BTC/ETH detected)
 nexus -c osint -m breach test@example.com    # dedicated breach module
 nexus -c osint -m social johndoe             # 30+ social platform links
 nexus -c osint -m github torvalds            # GitHub OSINT
+nexus -c osint -m discord @username          # Discord tag / username helper
 nexus -c pentest -m ports example.com        # active port scan (authorised targets only)
 nexus -c pentest -m js https://example.com   # JS endpoint + secret extraction
 nexus -c pentest -m s3 mycompany             # S3/GCS/Azure bucket discovery
@@ -72,6 +73,7 @@ No traffic reaches the subject; everything comes from public/third-party sources
 | `social`   | Link generator by target type: **username** → 65 platforms + 9 username-checkers (WhatsMyName · IDCrawl · KnowEm...); **email** → Epieos · IntelX · That'sThem · HIBP · DeHashed...; **phone** → 13 reverse-phone (Truecaller · Sync.me · NumLookup · ZLookup...); **name** → 18 people-search aggregators (IDCrawl · TruePeopleSearch · Radaris · ZabaSearch · FamilyTreeNow · PeekYou...) |
 | `breach`   | Hudson Rock · ProxyNova · **XposedOrNot** · LeakCheck + manual links (HIBP · DeHashed · IntelX · BreachDirectory · Snusbase · PSBDMP) |
 | `github`   | Profile · repos · gists · activity · commit emails (PushEvents) · SSH/GPG keys · orgs |
+| `discord`  | Local validation of new usernames, legacy `name#1234` tags and user IDs · snowflake timestamp · public/manual lookup pivots |
 | `image`    | Reverse-image (Google Lens · Yandex · Bing · TinEye · Baidu) · face search (PimEyes · FaceCheck.ID · Lenso) · forensics (FotoForensics · Metapicz · Jeffrey's EXIF) |
 | `crypto`   | BTC (blockchain.info · mempool.space) + ETH (Ethplorer) on-chain balance/tx/tokens + explorer links (Blockchair · WalletExplorer · OXT · Etherscan) |
 
