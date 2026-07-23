@@ -10,9 +10,9 @@
 <body class="login-page">
   <main class="login-shell">
     <section class="login-card" aria-labelledby="login-title">
-      <p class="eyebrow">NEXUS WEB · STATIC EDITION</p>
+      <p class="eyebrow">NEXUS WEB · SECURE ACCESS</p>
       <h1 id="login-title">Connexion</h1>
-      <p class="muted">Cette édition GitHub Pages conserve la session uniquement dans votre navigateur.</p>
+      <p class="muted">La version auto-hébergée utilise une session sécurisée côté serveur. GitHub Pages conserve son mode de démonstration locale.</p>
 
       <form id="login-form">
         <label for="username">Identifiant</label>
@@ -21,13 +21,13 @@
         <label for="password">Mot de passe local</label>
         <input id="password" name="password" type="password" autocomplete="current-password" minlength="4" required>
 
-        <p class="notice warning">Mode statique : les identifiants sont vérifiés localement et ne sont jamais envoyés à un serveur. Cette connexion protège uniquement l’interface sur cet appareil.</p>
+        <p class="notice warning">Sur GitHub Pages, la connexion reste une démonstration locale. Sur votre instance DuckDNS, les identifiants sont vérifiés par votre propre serveur Nexus.</p>
         <p id="login-error" class="form-error" role="alert" hidden></p>
         <button class="primary full" type="submit">Entrer dans Nexus</button>
       </form>
     </section>
   </main>
-  <script src="./auth.js?v=3"></script>
-  <script src="./login.js?v=3"></script>
+  <script src="./auth.js?v=4"></script>
+  <script src="./login.js?v=4"></script>
 </body>
 </html>

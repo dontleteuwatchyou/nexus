@@ -105,6 +105,55 @@ async function fetchJson(url, timeout = 8000) {
   } finally { clearTimeout(timer); }
 }
 
+async function backendOsint(target, detected, module) {
+  let selected = module === "auto" ? detected : module;
+  const aliases = {
+    "crypto-btc": "crypto",
+    "crypto-eth": "crypto",
+    name: "social",
+    people: "social"
+  };
+  selected = aliases[selected] || selected;
+  if (selected === "url" || selected === "web") {
+    return [finding("Backend Nexus", "Module indisponible", "Les URLs arbitraires sont bloquées sur l’API Web pour éviter le SSRF.", "", "Utilisez les pivots locaux ou un domaine explicite.", "low")];
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 65000);
+  try {
+    const response = await fetch("./api/osint/scan", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target, module: selected, timeout: 30 }),
+      signal: controller.signal
+    });
+    if (response.status === 401) {
+      location.replace("./login.html");
+      throw new Error("Session expirée");
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || `API Nexus HTTP ${response.status}`);
+    const rows = (data.findings || []).map(item => finding(
+      `Backend · ${item.source}`,
+      item.label,
+      typeof item.value === "string" ? item.value : JSON.stringify(item.value),
+      item.url || "",
+      "Résultat produit par le moteur Python Nexus.",
+      item.severity === "found" ? "live" : item.severity === "warn" ? "low" : "high"
+    ));
+    for (const message of data.errors || []) {
+      rows.push(finding("Backend · erreurs", "Source indisponible", message, "", "Le scan continue avec les autres sources.", "low"));
+    }
+    return rows.length ? rows : [finding("Backend Nexus", "Aucun résultat", "Le module n’a retourné aucune observation.", "", "", "low")];
+  } catch (error) {
+    if (error.name === "AbortError") throw new Error("Le backend Nexus a dépassé le délai autorisé.");
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function liveDns(host) {
   const types = ["A", "AAAA", "MX", "TXT"];
   const settled = await Promise.allSettled(types.map(type => fetchJson(`https://dns.google/resolve?name=${encode(host)}&type=${type}`)));
@@ -143,6 +192,7 @@ async function liveBitcoin(target) {
 
 async function liveEnrichment(target, detected, module) {
   try {
+    if (BACKEND_AUTH) return await backendOsint(target, detected, module);
     if (detected === "ip" && !target.includes(":")) return await liveIp(target);
     if (detected === "crypto-btc") return await liveBitcoin(target);
     if (module === "github" || detected === "username") return await liveGithub(target);
@@ -471,4 +521,8 @@ $("#copy-report").addEventListener("click", async () => {
 });
 $("#clear-history").addEventListener("click", () => { localStorage.removeItem(HISTORY_KEY); renderHistory(); });
 $("#live-passive").addEventListener("change", event => { $("#privacy-note").textContent = event.target.checked ? "Mode passif · la cible sera transmise aux API publiques nécessaires" : "Mode local · aucune cible transmise automatiquement"; });
+if (BACKEND_AUTH) {
+  $("#live-passive").checked = true;
+  $("#privacy-note").textContent = "Backend Nexus · enrichissement Python activé";
+}
 renderModules(); selectModule("auto"); renderHistory();
