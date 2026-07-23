@@ -195,6 +195,7 @@ def collect_live_metrics(
     metrics: dict[str, object] = {
         "server": "offline",
         "container": "stopped",
+        "acceleration": "—",
         "cpu": "—",
         "ram": "—",
         "gpu": "—",
@@ -211,10 +212,18 @@ def collect_live_metrics(
         pass
 
     inspect = _command_output(
-        ["docker", "inspect", "--format", "{{.State.Running}}", container]
+        [
+            "docker",
+            "inspect",
+            "--format",
+            '{{.State.Running}} {{index .Config.Labels "org.nexus.ai.acceleration"}}',
+            container,
+        ]
     )
-    if inspect == "true":
+    running, _, acceleration = inspect.partition(" ")
+    if running == "true":
         metrics["container"] = "running"
+        metrics["acceleration"] = acceleration or "—"
         raw = _command_output(
             ["docker", "stats", "--no-stream", "--format", "{{json .}}", container],
             timeout=3,
@@ -234,7 +243,7 @@ def collect_live_metrics(
             "--format=csv,noheader,nounits",
         ]
     )
-    if gpu:
+    if gpu and acceleration == "gpu":
         try:
             utilisation, used, total, temperature, power = (
                 part.strip() for part in gpu.splitlines()[0].split(",")
@@ -254,13 +263,15 @@ def format_live_metrics(metrics: dict[str, object], markup: bool = False) -> str
         status = "[#4ade80]READY[/]" if ready else "[#ef4444]OFFLINE[/]"
         return (
             f"[bold #f59e0b]NEXUS AI[/] {status}  "
+            f"[dim]MODE[/] {metrics['acceleration']}  "
             f"[dim]CPU[/] {metrics['cpu']}  [dim]RAM[/] {metrics['ram']}  "
             f"[dim]GPU[/] {metrics['gpu']}  [dim]VRAM[/] {metrics['vram']}  "
             f"[dim]TEMP[/] {metrics['temperature']}  [dim]POWER[/] {metrics['power']}"
         )
     status = "READY" if ready else "OFFLINE"
     return (
-        f"NEXUS AI {status} | CPU {metrics['cpu']} | RAM {metrics['ram']} | "
+        f"NEXUS AI {status} | MODE {metrics['acceleration']} | "
+        f"CPU {metrics['cpu']} | RAM {metrics['ram']} | "
         f"GPU {metrics['gpu']} | VRAM {metrics['vram']} | "
         f"TEMP {metrics['temperature']} | POWER {metrics['power']}"
     )

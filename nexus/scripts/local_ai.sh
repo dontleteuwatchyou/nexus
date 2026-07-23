@@ -8,7 +8,7 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 CONTAINER="${NEXUS_AI_CONTAINER:-nexus-ai-local}"
 API_KEY="${NEXUS_AI_API_KEY:-nexus-local}"
 PORT="${NEXUS_AI_PORT:-8080}"
-CACHE="${NEXUS_AI_CACHE:-$HOME/.cache/huggingface}"
+CACHE="${NEXUS_AI_CACHE:-$HOME/.cache/nexus-ai}"
 PYTHON="$PROJECT_DIR/.venv/bin/python"
 [[ -x "$PYTHON" ]] || PYTHON=python3
 
@@ -69,6 +69,14 @@ else
     GPU_ARGS=()
 fi
 
+MODEL_REPO="${MODEL%%:*}"
+MODEL_QUANT="${MODEL#*:}"
+MODEL_BASENAME="${MODEL_REPO##*/}"
+MODEL_BASENAME="${MODEL_BASENAME%-GGUF}"
+MODEL_FILENAME="${MODEL_BASENAME}-${MODEL_QUANT}.gguf"
+MODEL_PATH="$CACHE/$MODEL_FILENAME"
+MODEL_URL="https://huggingface.co/$MODEL_REPO/resolve/main/$MODEL_FILENAME"
+
 case "$ACTION" in
     start)
         if [[ "$PROFILE" == "core" || -z "$MODEL" ]]; then
@@ -77,6 +85,15 @@ case "$ACTION" in
             exit 0
         fi
         mkdir -p "$CACHE"
+        if [[ ! -s "$MODEL_PATH" ]]; then
+            command -v curl >/dev/null 2>&1 || {
+                printf 'curl is required to download the selected GGUF model.\n' >&2
+                exit 1
+            }
+            printf 'Downloading %s to the persistent Nexus AI cache…\n' "$MODEL_FILENAME"
+            curl --location --fail --retry 3 --continue-at - \
+                --output "$MODEL_PATH" "$MODEL_URL"
+        fi
         if docker inspect "$CONTAINER" >/dev/null 2>&1; then
             EXISTING_PROFILE="$(
                 docker inspect --format \
@@ -100,11 +117,12 @@ case "$ACTION" in
                 --name "$CONTAINER" \
                 --label "org.nexus.ai.profile=$PROFILE" \
                 --label "org.nexus.ai.model=$MODEL" \
+                --label "org.nexus.ai.acceleration=$([[ ${#GPU_ARGS[@]} -gt 0 ]] && printf gpu || printf cpu)" \
                 "${GPU_ARGS[@]}" \
                 --publish "127.0.0.1:$PORT:8080" \
-                --volume "$CACHE:/root/.cache/huggingface" \
+                --volume "$CACHE:/models:ro" \
                 "$IMAGE" \
-                --hf-repo "$MODEL" \
+                --model "/models/$MODEL_FILENAME" \
                 --alias local \
                 --api-key "$API_KEY" \
                 --host 0.0.0.0 \
@@ -115,7 +133,11 @@ case "$ACTION" in
                 --n-predict "$MAX_TOKENS"
         fi
         printf 'Adaptive profile: %s · model: %s\n' "$PROFILE" "$MODEL"
-        [[ -n "$GPU_NAME" ]] && printf 'GPU: %s · %s GiB VRAM\n' "$GPU_NAME" "$VRAM"
+        if ((${#GPU_ARGS[@]})); then
+            printf 'Acceleration: GPU · %s · %s GiB VRAM\n' "$GPU_NAME" "$VRAM"
+        else
+            printf 'Acceleration: CPU (NVIDIA Container Toolkit indisponible)\n'
+        fi
         printf 'Nexus local AI is starting on http://127.0.0.1:%s/v1\n' "$PORT"
         printf 'First start downloads the selected quantized model. Follow with:\n'
         printf '  docker logs -f %s\n' "$CONTAINER"
