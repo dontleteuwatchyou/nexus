@@ -195,6 +195,9 @@ and is bounded to avoid unrestrained RAM growth.
 The first local start downloads roughly 2.5 GB into the Hugging Face cache.
 The server only binds to `127.0.0.1`; it is not exposed to the network.
 
+Development status, measured baseline and the exact RTX 4070 Ti continuation
+procedure are documented in [`NEXUS_AI_HANDOFF.md`](NEXUS_AI_HANDOFF.md).
+
 ## Architecture
 
 ```
