@@ -2,7 +2,8 @@
 set -Eeuo pipefail
 
 ACTION="${1:-status}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 CONTAINER="${NEXUS_AI_CONTAINER:-nexus-ai-local}"
 API_KEY="${NEXUS_AI_API_KEY:-nexus-local}"
