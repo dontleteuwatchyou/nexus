@@ -1110,10 +1110,9 @@ class OsintApp(App):
             requested_modules = set(decision.modules)
             selected_osint = requested_modules.intersection(OSINT_MODULES)
             selected_pentest = requested_modules.intersection(PENTEST_MODULES)
-            wants_active = decision.active or bool(selected_pentest)
-            active_allowed = wants_active and getattr(
-                self, "_pentest_authorized", False
-            )
+            active_intent = decision.active or bool(selected_pentest)
+            session_authorized = getattr(self, "_pentest_authorized", False)
+            active_allowed = active_intent and session_authorized
             sem = asyncio.Semaphore(4)
 
             async def _run(cat: str, mod: str) -> tuple[str, ScanResult]:
@@ -1142,30 +1141,107 @@ class OsintApp(App):
                 }
                 selected_osint = minimal_modules.get(ttype, set())
 
-            tasks = [asyncio.create_task(_run("osint", m)) for m in selected_osint]
-            if active_allowed:
-                tasks += [
-                    asyncio.create_task(_run("pentest", m))
-                    for m in selected_pentest
-                ]
+            attempted_modules: set[str] = set()
+            all_results: dict[str, ScanResult] = {}
 
-            all_results = {}
-            for fut in asyncio.as_completed(tasks):
-                try:
-                    key, res = await fut
-                except Exception:
-                    continue
-                all_results[key] = res
+            async def _execute(cat: str, modules: set[str]) -> None:
+                pending = sorted(modules - attempted_modules)
+                attempted_modules.update(pending)
+                tasks = [
+                    asyncio.create_task(_run(cat, module))
+                    for module in pending
+                ]
+                for fut in asyncio.as_completed(tasks):
+                    try:
+                        key, result = await fut
+                    except Exception:
+                        continue
+                    all_results[key] = result
+
+            await _execute("osint", selected_osint)
+            if active_allowed:
+                await _execute("pentest", selected_pentest)
+
+            activity = "Nexus AI évalue les preuves"
+            _set_status("> Revue analytique du premier passage")
+            review_context = self._scan_context(all_results)
+            review = await self._nexus_ai.review(
+                msg,
+                target,
+                ttype,
+                review_context,
+                attempted_modules,
+            )
+            confidence_labels = {
+                "confirmed": "CONFIRMÉ",
+                "probable": "PROBABLE",
+                "lead": "PISTE",
+                "unattributed": "NON ATTRIBUÉ",
+            }
+            analysis_lines = [
+                f"[bold #a78bfa]Analyse de l’agent[/]",
+                f"  [#a3a3a3]Plan[/] · {escape(decision.rationale or 'modules minimaux adaptés à la cible')}",
+                f"  [#a3a3a3]Revue[/] · {confidence_labels[review.confidence]} · "
+                f"{escape(review.summary)}",
+            ]
+            if review.gap:
+                analysis_lines.append(
+                    f"  [#a3a3a3]Preuve manquante[/] · {escape(review.gap)}"
+                )
+
+            follow_osint = set(review.next_modules).intersection(OSINT_MODULES)
+            follow_pentest = set(review.next_modules).intersection(PENTEST_MODULES)
+            if not active_intent:
+                follow_pentest.clear()
+            follow_osint -= attempted_modules
+            follow_pentest -= attempted_modules
+            if review.decision == "pivot" and (follow_osint or follow_pentest):
+                pivot_names = sorted(follow_osint | follow_pentest)
+                analysis_lines.append(
+                    "  [#a3a3a3]Pivot[/] · " + escape(", ".join(pivot_names))
+                )
+                activity = "Nexus exécute un pivot ciblé"
+                _set_status(f"> Pivot IA : {', '.join(pivot_names)}")
+                await _execute("osint", follow_osint)
+                if follow_pentest and session_authorized:
+                    await _execute("pentest", follow_pentest)
+                elif follow_pentest:
+                    active_intent = True
+
+                activity = "Nexus AI vérifie la conclusion"
+                _set_status("> Revue finale des preuves")
+                final_context = self._scan_context(all_results)
+                final_review = await self._nexus_ai.review(
+                    msg,
+                    target,
+                    ttype,
+                    final_context,
+                    attempted_modules,
+                )
+                analysis_lines.append(
+                    f"  [#a3a3a3]Conclusion[/] · "
+                    f"{confidence_labels[final_review.confidence]} · "
+                    f"{escape(final_review.summary)}"
+                )
+                review = final_review
+            else:
+                analysis_lines.append(
+                    "  [#a3a3a3]Décision[/] · arrêt, aucun outil supplémentaire utile"
+                )
 
             elapsed = int(__import__("time").time() - start)
             if any(result.findings for result in all_results.values()):
                 scan_response = (
-                    f"[bold #4ade80]Scan ({elapsed}s)[/]\n"
+                    "\n".join(analysis_lines)
+                    + f"\n\n[bold #4ade80]Scan ({elapsed}s)[/]\n"
                     f"{self._scan_to_chat(all_results)}"
                 )
             else:
-                scan_response = "[dim]Scan terminé : aucun résultat concluant.[/dim]"
-            if wants_active and not active_allowed:
+                scan_response = (
+                    "\n".join(analysis_lines)
+                    + "\n\n[dim]Scan terminé : aucun résultat concluant.[/dim]"
+                )
+            if active_intent and not session_authorized:
                 scan_response += (
                     "\n\n[#f59e0b]Pentest actif prêt.[/] Confirme une seule fois "
                     "que la cible est autorisée (ex. « j’autorise ce lab »), puis "
@@ -1175,7 +1251,14 @@ class OsintApp(App):
             activity = "Nexus AI rédige le rapport"
             _set_status("> Analyse des preuves")
             runtime_context = self._scan_context(all_results)
-            if wants_active and not active_allowed:
+            runtime_context += (
+                "\n\nREVUE ANALYTIQUE DE L'AGENT :\n"
+                f"- confiance: {review.confidence}\n"
+                f"- synthèse: {review.summary}\n"
+                f"- manque principal: {review.gap or 'aucun pivot utile'}\n"
+                f"- modules exécutés: {', '.join(sorted(attempted_modules))}"
+            )
+            if active_intent and not session_authorized:
                 runtime_context += (
                     "\nAction pentest non exécutée : autorisation explicite requise."
                 )

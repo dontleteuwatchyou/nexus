@@ -23,6 +23,15 @@ Le moteur possède :
 - cinq profils d’inférence adaptatifs, de Core à Qwen3-8B accéléré par CUDA ;
 - un réglage automatique du modèle, du contexte, des tokens et des threads ;
 - les diagnostics `nexus --ai-status` et `scripts/local_ai.sh profile`.
+- une boucle d'agent bornée : plan minimal, exécution, revue des preuves,
+  pivot complémentaire unique puis synthèse ;
+- un budget maximal de deux nouveaux modules au pivot, sans répétition ni
+  changement silencieux de cible ;
+- une revue d'identité déterministe qui interdit d'attribuer un pseudo
+  générique, des comptes ou des breaches à une personne sans preuve
+  indépendante ;
+- un journal de décision concis visible dans la TUI, sans demander ni afficher
+  de chaîne de pensée privée.
 
 Un serveur local llama.cpp est fourni par `scripts/local_ai.sh`. Le modèle est
 choisi entre Qwen3 0.6B, 1.7B, 4B et 8B selon la machine, et reste accessible
@@ -47,9 +56,10 @@ Résultats :
 - évaluation réelle du modèle effectuée sur le routage username, CSP et CVE.
 
 Le fichier `training/BASELINE.md` conserve les résultats avant entraînement.
-Une faiblesse connue reste volontairement mesurée : le modèle de base peut
-attribuer une sévérité trop précise à un header CSP absent. Le fine-tuning doit
-améliorer cette calibration sans régresser les autres tests.
+Les sorties du petit modèle sont maintenant contrôlées par un contrat de preuve
+déterministe. Le fine-tuning doit encore améliorer la calibration et la
+sélection des pivots, mais il n'est plus l'unique barrière contre une attribution
+OSINT abusive.
 
 ## Fichiers importants
 

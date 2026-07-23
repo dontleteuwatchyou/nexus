@@ -75,6 +75,28 @@ open-redirect, spring, js, s3, headers, dns-sec, graphql.
 Les modules pentest nécessitent une demande explicite et une autorisation.
 Si la demande est ambiguë, choisis chat et pose une question dans la réponse."""
 
+REVIEWER_PROMPT = """/no_think
+Tu es la couche d'analyse de Nexus AI. Après un premier passage d'outils, tu
+évalues si les observations répondent réellement à la demande. Tu ne récites
+pas les résultats : tu identifies le niveau de preuve, une contradiction ou
+le principal manque, puis tu décides s'il faut arrêter ou effectuer un unique
+pivot complémentaire.
+
+Règles :
+- Ne demande jamais un module déjà exécuté.
+- Maximum deux modules complémentaires, strictement nécessaires.
+- Ne change jamais de cible et ne transforme pas une URL/pseudo en identité.
+- Un pseudo générique ou une preuve non attribuée doit normalement mener à
+  `stop`, sauf si un module peut vérifier un attribut déjà présent.
+- Les modules pentest actifs nécessitent toujours une autorisation explicite.
+- `summary`, `gap` et `rationale` sont des justifications courtes destinées à
+  l'utilisateur, pas une chaîne de pensée détaillée.
+
+Réponds uniquement avec un objet JSON :
+{"decision":"stop|pivot","confidence":"confirmed|probable|lead|unattributed",
+"next_modules":[],"summary":"constat court","gap":"preuve manquante",
+"rationale":"raison courte"}"""
+
 ALLOWED_AGENT_MODULES = frozenset(
     {
         "email", "username", "domain", "ip", "phone", "url", "social",
@@ -89,6 +111,11 @@ GUIDE_SOURCE_LINE = re.compile(
     r"^\s*(?:[-*]\s*)?(?:\*\*)?source(?:\*\*)?\s*:\s*"
     r"(?:osint|reporting|modules|web_security|identity_correlation|"
     r"breach_analysis|pentest_methodology)\.md\s*$",
+    re.IGNORECASE,
+)
+EXPLICIT_SCAN_INTENT = re.compile(
+    r"\b(?:analyse(?:r)?|cherche(?:r)?|recherche(?:r)?|scan(?:ne|ner)?|"
+    r"trouve(?:r)?|vérifie(?:r)?|verifie(?:r)?|enqu[eê]te|osint|recon)\b",
     re.IGNORECASE,
 )
 
@@ -216,6 +243,16 @@ class AgentDecision:
 
 
 @dataclass(frozen=True)
+class ReviewDecision:
+    decision: str = "stop"
+    confidence: str = "unattributed"
+    next_modules: tuple[str, ...] = ()
+    summary: str = "Preuves examinées ; aucun pivot automatique nécessaire."
+    gap: str = ""
+    rationale: str = ""
+
+
+@dataclass(frozen=True)
 class NexusAIConfig:
     profile: AIProfile = field(default_factory=select_profile)
     endpoint: str = field(
@@ -275,12 +312,42 @@ class NexusAI:
     def reset(self) -> None:
         self.history.clear()
 
+    @staticmethod
+    def _fallback_plan(
+        message: str, candidate_targets: list[tuple[str, str]]
+    ) -> AgentDecision:
+        if len(candidate_targets) != 1:
+            return AgentDecision()
+        target, target_type = candidate_targets[0]
+        target_only = message.strip().rstrip(".,;:!?").casefold() == target.casefold()
+        if not target_only and not EXPLICIT_SCAN_INTENT.search(message):
+            return AgentDecision()
+        minimal_modules = {
+            "email": ("email",),
+            "username": ("username",),
+            "ip": ("ip",),
+            "domain": ("domain",),
+            "url": ("url",),
+            "phone": ("phone",),
+            "crypto": ("crypto",),
+        }
+        return AgentDecision(
+            action="scan",
+            target=target,
+            target_type=target_type,
+            modules=minimal_modules.get(target_type, ()),
+            active=False,
+            rationale="Demande explicite ; premier passage minimal avant revue.",
+        )
+
     async def plan(
         self, message: str, candidate_targets: list[tuple[str, str]]
     ) -> AgentDecision:
         """Let the model decide whether Nexus should act and which tools to use."""
-        if not self.config.enabled or not candidate_targets:
+        if not candidate_targets:
             return AgentDecision()
+        if not self.config.enabled:
+            return self._fallback_plan(message, candidate_targets)
 
         candidates = [
             {"target": target, "type": target_type}
@@ -312,9 +379,12 @@ class NexusAI:
         except (
             httpx.HTTPError, OSError, ValueError, KeyError, IndexError, TypeError
         ):
-            return AgentDecision()
+            return self._fallback_plan(message, candidate_targets)
 
         if str(raw.get("action", "")).lower() != "scan":
+            fallback = self._fallback_plan(message, candidate_targets)
+            if fallback.action == "scan":
+                return fallback
             return AgentDecision(
                 rationale=str(raw.get("rationale", ""))[:240]
             )
@@ -337,7 +407,7 @@ class NexusAI:
                 for module in raw.get("modules", [])
                 if str(module).lower() in ALLOWED_AGENT_MODULES
             )
-        )
+        )[:4]
         return AgentDecision(
             action="scan",
             target=selected[0],
@@ -345,6 +415,88 @@ class NexusAI:
             modules=modules,
             active=bool(raw.get("active", False)),
             rationale=str(raw.get("rationale", ""))[:240],
+        )
+
+    async def review(
+        self,
+        message: str,
+        target: str,
+        target_type: str,
+        runtime_context: str,
+        attempted_modules: set[str],
+    ) -> ReviewDecision:
+        """Evaluate evidence and optionally select one bounded follow-up pivot."""
+        if not self.config.enabled:
+            return ReviewDecision()
+        payload = {
+            "model": self.config.model,
+            "messages": [
+                {"role": "system", "content": REVIEWER_PROMPT},
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {
+                            "request": message,
+                            "target": target,
+                            "target_type": target_type,
+                            "attempted_modules": sorted(attempted_modules),
+                            "evidence": runtime_context,
+                        },
+                        ensure_ascii=False,
+                    ),
+                },
+            ],
+            "temperature": 0,
+            "max_tokens": 260,
+            "stream": False,
+            "response_format": {"type": "json_object"},
+        }
+        try:
+            data = await self._post_completion(payload)
+            content = str(data["choices"][0]["message"]["content"]).strip()
+            match = re.search(r"\{.*\}", content, flags=re.DOTALL)
+            raw = json.loads(match.group(0) if match else content)
+        except (
+            httpx.HTTPError, OSError, ValueError, KeyError, IndexError, TypeError
+        ):
+            return ReviewDecision(summary="Revue IA indisponible ; arrêt prudent.")
+
+        confidence = str(raw.get("confidence", "unattributed")).lower()
+        if confidence not in {"confirmed", "probable", "lead", "unattributed"}:
+            confidence = "unattributed"
+        modules = tuple(
+            dict.fromkeys(
+                str(module).lower()
+                for module in raw.get("next_modules", [])
+                if str(module).lower() in ALLOWED_AGENT_MODULES
+                and str(module).lower() not in attempted_modules
+            )
+        )[:2]
+        wants_pivot = str(raw.get("decision", "")).lower() == "pivot"
+        if target_type == "username":
+            confidence = "unattributed"
+            modules = ()
+            wants_pivot = False
+            summary = (
+                "Le pseudo produit des pistes, mais aucune identité réelle "
+                "n'est attribuable avec ces seules preuves."
+            )
+            gap = (
+                "Un pivot public et discriminant déjà connu : profil exact, "
+                "email autorisé, domaine ou identifiant stable."
+            )
+            rationale = "Arrêt prudent : même pseudo ne signifie pas même personne."
+        else:
+            summary = sanitize_model_answer(str(raw.get("summary", "")))[:280]
+            gap = sanitize_model_answer(str(raw.get("gap", "")))[:240]
+            rationale = sanitize_model_answer(str(raw.get("rationale", "")))[:240]
+        return ReviewDecision(
+            decision="pivot" if wants_pivot and modules else "stop",
+            confidence=confidence,
+            next_modules=modules if wants_pivot else (),
+            summary=summary or "Preuves examinées.",
+            gap=gap,
+            rationale=rationale,
         )
 
     async def answer(self, message: str, runtime_context: str | None = None) -> str:

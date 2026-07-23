@@ -4,6 +4,7 @@ from .engine import (
     AgentDecision,
     NexusAI,
     NexusAIConfig,
+    ReviewDecision,
     enforce_evidence_contract,
     sanitize_model_answer,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "KnowledgeIndex",
     "NexusAI",
     "NexusAIConfig",
+    "ReviewDecision",
     "collect_live_metrics",
     "detect_hardware",
     "enforce_evidence_contract",

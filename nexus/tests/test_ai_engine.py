@@ -208,3 +208,156 @@ def test_agent_rejects_an_invented_target():
             ai.plan("Analyse example.com", [("example.com", "domain")])
         )
     assert decision.action == "chat"
+
+
+def test_agent_reviews_evidence_and_selects_bounded_new_pivots():
+    endpoint = "http://127.0.0.1:18888/v1"
+    ai = NexusAI(NexusAIConfig(endpoint=endpoint, model="test", enabled=True))
+    with respx.mock:
+        route = respx.post(f"{endpoint}/chat/completions").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": json.dumps(
+                                    {
+                                        "decision": "pivot",
+                                        "confidence": "lead",
+                                        "next_modules": [
+                                            "domain",
+                                            "headers",
+                                            "ssl",
+                                            "invented",
+                                        ],
+                                        "summary": "Configuration web partielle.",
+                                        "gap": "TLS et en-têtes non vérifiés.",
+                                        "rationale": "Compléter les contrôles passifs.",
+                                    }
+                                )
+                            }
+                        }
+                    ]
+                },
+            )
+        )
+        review = asyncio.run(
+            ai.review(
+                "Recherche ce pseudo",
+                "example.com",
+                "domain",
+                "[module=domain] une observation",
+                {"domain"},
+            )
+        )
+    assert review.decision == "pivot"
+    assert review.confidence == "lead"
+    assert review.next_modules == ("headers", "ssl")
+    assert "TLS" in review.gap
+    request = json.loads(route.calls[0].request.read())
+    assert request["messages"][0]["content"].startswith("/no_think")
+    assert "unique" in request["messages"][0]["content"]
+
+
+def test_agent_review_stops_even_if_model_lists_modules():
+    endpoint = "http://127.0.0.1:18888/v1"
+    ai = NexusAI(NexusAIConfig(endpoint=endpoint, model="test", enabled=True))
+    with respx.mock:
+        respx.post(f"{endpoint}/chat/completions").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": (
+                                    '{"decision":"stop","confidence":"unattributed",'
+                                    '"next_modules":["breach"],'
+                                    '"summary":"Preuve insuffisante."}'
+                                )
+                            }
+                        }
+                    ]
+                },
+            )
+        )
+        review = asyncio.run(
+            ai.review("analyse", "yanis", "username", "NON ATTRIBUÉ", {"username"})
+        )
+    assert review.decision == "stop"
+    assert review.next_modules == ()
+
+
+def test_explicit_scan_request_has_a_safe_fallback_when_model_says_chat():
+    endpoint = "http://127.0.0.1:18888/v1"
+    ai = NexusAI(NexusAIConfig(endpoint=endpoint, model="test", enabled=True))
+    with respx.mock:
+        respx.post(f"{endpoint}/chat/completions").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": (
+                                    '{"action":"chat","target":null,"modules":[],'
+                                    '"rationale":"hésitation"}'
+                                )
+                            }
+                        }
+                    ]
+                },
+            )
+        )
+        decision = asyncio.run(
+            ai.plan(
+                "Recherche le pseudo yanis",
+                [("yanis", "username")],
+            )
+        )
+    assert decision.action == "scan"
+    assert decision.modules == ("username",)
+    assert "premier passage minimal" in decision.rationale
+
+
+def test_username_review_cannot_claim_identity_even_if_model_does():
+    endpoint = "http://127.0.0.1:18888/v1"
+    ai = NexusAI(NexusAIConfig(endpoint=endpoint, model="test", enabled=True))
+    with respx.mock:
+        respx.post(f"{endpoint}/chat/completions").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": json.dumps(
+                                    {
+                                        "decision": "pivot",
+                                        "confidence": "confirmed",
+                                        "next_modules": ["social", "breach"],
+                                        "summary": "Identité confirmée.",
+                                        "gap": "",
+                                        "rationale": "Même pseudo.",
+                                    }
+                                )
+                            }
+                        }
+                    ]
+                },
+            )
+        )
+        review = asyncio.run(
+            ai.review(
+                "Recherche Yanis",
+                "yanis",
+                "username",
+                "[module=username] 165 pistes",
+                {"username"},
+            )
+        )
+    assert review.decision == "stop"
+    assert review.confidence == "unattributed"
+    assert review.next_modules == ()
+    assert "aucune identité réelle" in review.summary

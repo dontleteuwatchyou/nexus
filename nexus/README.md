@@ -178,6 +178,20 @@ routes Nexus tools and remains useful on low-end computers. At startup Nexus
 measures local CPU threads, RAM and NVIDIA VRAM, then selects an inference
 profile without transmitting that hardware information.
 
+The assistant uses a bounded analyst loop instead of blindly launching every
+tool:
+
+1. understand the request and select a minimal first pass;
+2. execute only the chosen modules;
+3. review evidence, contradictions and the principal missing proof;
+4. stop or run one targeted pivot of at most two new modules;
+5. produce a grounded report with a visible confidence level.
+
+The decision summary is visible in the terminal, while private model
+chain-of-thought is neither requested nor displayed. Repeated modules, silent
+target changes and unrequested active escalation are rejected. Active pentest
+still requires explicit scope authorisation.
+
 | Profile | Typical machine | Local model |
 |---|---|---|
 | `core` | less than 3 GiB RAM | none; deterministic routing |
