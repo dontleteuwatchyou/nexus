@@ -13,6 +13,9 @@ import os
 import platform
 import shutil
 import subprocess
+import time
+import urllib.error
+import urllib.request
 from dataclasses import asdict, dataclass
 from functools import lru_cache
 
@@ -171,6 +174,109 @@ def runtime_report(requested: str | None = None) -> dict:
     }
 
 
+def _command_output(args: list[str], timeout: float = 2.0) -> str:
+    try:
+        result = subprocess.run(
+            args,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=timeout,
+        )
+        return result.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def collect_live_metrics(
+    container: str = "nexus-ai-local", port: int = 8080
+) -> dict[str, object]:
+    """Collect one non-throwing snapshot for the TUI and terminal monitor."""
+    metrics: dict[str, object] = {
+        "server": "offline",
+        "container": "stopped",
+        "cpu": "—",
+        "ram": "—",
+        "gpu": "—",
+        "vram": "—",
+        "temperature": "—",
+        "power": "—",
+    }
+    try:
+        request = urllib.request.Request(f"http://127.0.0.1:{port}/health")
+        with urllib.request.urlopen(request, timeout=0.5) as response:
+            if response.status == 200:
+                metrics["server"] = "ready"
+    except (OSError, urllib.error.URLError):
+        pass
+
+    inspect = _command_output(
+        ["docker", "inspect", "--format", "{{.State.Running}}", container]
+    )
+    if inspect == "true":
+        metrics["container"] = "running"
+        raw = _command_output(
+            ["docker", "stats", "--no-stream", "--format", "{{json .}}", container],
+            timeout=3,
+        )
+        try:
+            stats = json.loads(raw)
+            metrics["cpu"] = stats.get("CPUPerc", "—")
+            metrics["ram"] = stats.get("MemUsage", "—")
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    gpu = _command_output(
+        [
+            "nvidia-smi",
+            "--query-gpu=utilization.gpu,memory.used,memory.total,"
+            "temperature.gpu,power.draw",
+            "--format=csv,noheader,nounits",
+        ]
+    )
+    if gpu:
+        try:
+            utilisation, used, total, temperature, power = (
+                part.strip() for part in gpu.splitlines()[0].split(",")
+            )
+            metrics["gpu"] = f"{utilisation}%"
+            metrics["vram"] = f"{used}/{total} MiB"
+            metrics["temperature"] = f"{temperature}°C"
+            metrics["power"] = f"{power} W"
+        except ValueError:
+            pass
+    return metrics
+
+
+def format_live_metrics(metrics: dict[str, object], markup: bool = False) -> str:
+    ready = metrics["server"] == "ready"
+    if markup:
+        status = "[#4ade80]READY[/]" if ready else "[#ef4444]OFFLINE[/]"
+        return (
+            f"[bold #f59e0b]NEXUS AI[/] {status}  "
+            f"[dim]CPU[/] {metrics['cpu']}  [dim]RAM[/] {metrics['ram']}  "
+            f"[dim]GPU[/] {metrics['gpu']}  [dim]VRAM[/] {metrics['vram']}  "
+            f"[dim]TEMP[/] {metrics['temperature']}  [dim]POWER[/] {metrics['power']}"
+        )
+    status = "READY" if ready else "OFFLINE"
+    return (
+        f"NEXUS AI {status} | CPU {metrics['cpu']} | RAM {metrics['ram']} | "
+        f"GPU {metrics['gpu']} | VRAM {metrics['vram']} | "
+        f"TEMP {metrics['temperature']} | POWER {metrics['power']}"
+    )
+
+
+def watch_metrics(interval: float = 2.0) -> None:
+    """Render live inference resources until interrupted."""
+    try:
+        while True:
+            print("\033[2J\033[H" + format_live_metrics(collect_live_metrics()))
+            print("Ctrl+C pour quitter")
+            time.sleep(max(0.5, interval))
+    except KeyboardInterrupt:
+        pass
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Inspect Nexus AI adaptive runtime")
     parser.add_argument(
@@ -179,7 +285,12 @@ def main() -> None:
         help="auto, core, lite, compact, balanced or performance",
     )
     parser.add_argument("--values", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--watch", action="store_true", help="monitor resources live")
+    parser.add_argument("--interval", type=float, default=2.0)
     args = parser.parse_args()
+    if args.watch:
+        watch_metrics(args.interval)
+        return
     report = runtime_report(args.profile)
     profile = report["profile"]
     hardware = report["hardware"]

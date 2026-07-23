@@ -16,7 +16,7 @@ from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.reactive import reactive
 from textual.widgets import (Footer, Header, Input, ListItem, ListView, Static)
 
-from .ai import NexusAI
+from .ai import NexusAI, collect_live_metrics, format_live_metrics
 from .correlate import (PENTEST_TARGET_TYPES, detect_target_type, scan_chained,
                         scan_full, scan_one)
 from .external import find_tool
@@ -570,6 +570,14 @@ ListItem.--highlight { background: #1f1f1f; }
 #chat-input:focus { border: round #fb923c; }
 
 #chat-header { height: 3; margin: 1 0 0 1; }
+#ai-performance {
+    height: 3;
+    margin: 0 1;
+    padding: 0 1;
+    background: #141414;
+    border: round #2a2a2a;
+    color: #d4d4d4;
+}
 
 Footer { background: #141414; color: #737373; }
 Footer > .footer--key {
@@ -689,6 +697,10 @@ class OsintApp(App):
                 yield Static(self._splash_text(), id="results")
             with Vertical(id="chat-container", classes="hidden"):
                 yield Static("[bold #f59e0b]✉  Chat — Assistant IA OSINT/Pentest[/]", id="chat-header")
+                yield Static(
+                    "[bold #f59e0b]NEXUS AI[/] [#737373]collecte des performances…[/]",
+                    id="ai-performance",
+                )
                 with ScrollableContainer(id="chat-scroll"):
                     yield Static("", id="chat-messages-wrapper")
                 yield Input(placeholder="  Demande moi n'importe quoi (OSINT, pentest, analyse...)",
@@ -701,6 +713,13 @@ class OsintApp(App):
         self._apply_active_tab()
         self.query_one("#osint-list", ListView).index = 0
         self.query_one("#target-input", Input).focus()
+        self.set_interval(2.0, self._refresh_ai_performance)
+
+    async def _refresh_ai_performance(self) -> None:
+        metrics = await asyncio.to_thread(collect_live_metrics)
+        self.query_one("#ai-performance", Static).update(
+            format_live_metrics(metrics, markup=True)
+        )
 
     # ── tab switching ──
 

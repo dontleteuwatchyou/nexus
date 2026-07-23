@@ -1,6 +1,11 @@
 """Tests for hardware-adaptive Nexus AI profiles."""
 
-from osint_toolkit.ai import HardwareInfo, select_profile
+from osint_toolkit.ai import (
+    HardwareInfo,
+    collect_live_metrics,
+    format_live_metrics,
+    select_profile,
+)
 
 
 def test_tiny_machine_falls_back_to_core():
@@ -38,3 +43,11 @@ def test_gpu_machine_uses_performance_profile():
 def test_explicit_profile_override_wins():
     hardware = HardwareInfo(cpu_threads=2, ram_gib=2.0)
     assert select_profile(hardware, "compact").name == "compact"
+
+
+def test_live_metrics_are_safe_when_server_is_absent():
+    metrics = collect_live_metrics(container="nexus-test-container-that-does-not-exist")
+    rendered = format_live_metrics(metrics)
+    assert metrics["server"] in {"offline", "ready"}
+    assert "CPU" in rendered
+    assert "VRAM" in rendered

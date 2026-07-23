@@ -190,6 +190,7 @@ Inspect the automatic choice before downloading anything:
 
 ```bash
 nexus --ai-status
+nexus --ai-monitor
 ./scripts/local_ai.sh profile
 ```
 
@@ -200,6 +201,7 @@ etc.):
 ```bash
 ./scripts/local_ai.sh start               # Docker + modèle Qwen3 adapté au matériel
 ./scripts/local_ai.sh status
+./scripts/local_ai.sh monitor
 export NEXUS_AI_ENDPOINT="http://127.0.0.1:8080/v1"
 export NEXUS_AI_MODEL="local"
 nexus --chat

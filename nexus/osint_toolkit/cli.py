@@ -327,6 +327,8 @@ Examples:
                          help="Lancer Nexus AI dans la TUI")
     parser.add_argument("--ai-status", action="store_true",
                          help="Afficher le matériel et le profil Nexus AI sélectionné")
+    parser.add_argument("--ai-monitor", action="store_true",
+                         help="Afficher CPU, RAM, GPU et VRAM IA en temps réel")
     parser.add_argument(
         "--ai-profile",
         choices=["auto", "core", "lite", "compact", "balanced", "performance"],
@@ -346,6 +348,12 @@ Examples:
         from .ai.performance import runtime_report
 
         console.print_json(data=runtime_report(args.ai_profile))
+        return
+
+    if args.ai_monitor:
+        from .ai.performance import watch_metrics
+
+        watch_metrics()
         return
 
     if args.check_tools:

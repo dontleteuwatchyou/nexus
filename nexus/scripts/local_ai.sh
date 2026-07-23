@@ -117,6 +117,12 @@ case "$ACTION" in
             'from osint_toolkit.ai.performance import main; main()' \
             --profile "${NEXUS_AI_PROFILE:-auto}"
         ;;
+    monitor)
+        PYTHONPATH="$PROJECT_DIR${PYTHONPATH:+:$PYTHONPATH}" \
+            "$PYTHON" -c \
+            'from osint_toolkit.ai.performance import main; main()' \
+            --watch
+        ;;
     logs)
         docker logs --follow "$CONTAINER"
         ;;
@@ -125,7 +131,7 @@ case "$ACTION" in
         printf 'Nexus local AI stopped; model cache was preserved.\n'
         ;;
     *)
-        printf 'Usage: %s {start|status|profile|logs|stop}\n' "$0" >&2
+        printf 'Usage: %s {start|status|profile|monitor|logs|stop}\n' "$0" >&2
         exit 2
         ;;
 esac
