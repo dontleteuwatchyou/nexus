@@ -16,6 +16,7 @@ node_modules/
 web/
 .DS_Store
 *.log
+logs/
 output/
 reports/
 targets*.txt

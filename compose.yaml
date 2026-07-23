@@ -5,11 +5,14 @@ services:
     env_file:
       - .env
       - .env.users
+    environment:
+      NEXUS_AUDIT_LOG: /logs/audit.jsonl
     restart: unless-stopped
     expose:
       - "8000"
     volumes:
       - nexus-output:/home/nexus/.osint-toolkit/output
+      - ./logs:/logs
     healthcheck:
       test:
         - CMD

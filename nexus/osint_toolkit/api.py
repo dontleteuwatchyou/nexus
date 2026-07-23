@@ -6,9 +6,13 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import time
 from collections import defaultdict, deque
+from datetime import UTC, datetime
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response
@@ -32,6 +36,37 @@ ALLOWED_MODULES = {
     "crypto",
     "discord",
 }
+audit_logger = logging.getLogger("nexus.audit")
+audit_logger.setLevel(logging.INFO)
+audit_logger.propagate = False
+_audit_log_path: str | None = None
+
+
+def _audit(event: str, **details: object) -> None:
+    """Append a structured audit event without recording credentials or cookies."""
+    global _audit_log_path
+    configured_path = os.getenv("NEXUS_AUDIT_LOG", "").strip()
+    if not configured_path:
+        return
+    if _audit_log_path != configured_path:
+        path = Path(configured_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        audit_logger.handlers.clear()
+        audit_logger.addHandler(
+            RotatingFileHandler(
+                path,
+                maxBytes=5 * 1024 * 1024,
+                backupCount=5,
+                encoding="utf-8",
+            )
+        )
+        _audit_log_path = configured_path
+    record = {
+        "timestamp": datetime.now(UTC).isoformat(),
+        "event": event,
+        **details,
+    }
+    audit_logger.info(json.dumps(record, ensure_ascii=False, separators=(",", ":")))
 
 
 def _required_env(name: str) -> str:
@@ -144,6 +179,9 @@ scan_limiter = SlidingWindowLimiter(limit=30, window=60)
 
 
 def _client_key(request: Request) -> str:
+    cloudflare_ip = request.headers.get("cf-connecting-ip", "").strip()
+    if cloudflare_ip:
+        return cloudflare_ip
     forwarded = request.headers.get("x-forwarded-for", "")
     return forwarded.split(",", 1)[0].strip() or (
         request.client.host if request.client else "unknown"
@@ -184,6 +222,13 @@ async def health() -> dict:
 async def login(payload: LoginRequest, request: Request, response: Response) -> dict:
     key = _client_key(request)
     if not login_limiter.allow(key):
+        _audit(
+            "login",
+            user=payload.username,
+            ip=key,
+            success=False,
+            reason="rate_limited",
+        )
         raise HTTPException(status_code=429, detail="Too many login attempts")
 
     matched_user = next(
@@ -196,6 +241,7 @@ async def login(payload: LoginRequest, request: Request, response: Response) -> 
         None,
     )
     if matched_user is None:
+        _audit("login", user=payload.username, ip=key, success=False)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = _sign_session(matched_user, _required_env("NEXUS_SESSION_SECRET"))
@@ -208,12 +254,18 @@ async def login(payload: LoginRequest, request: Request, response: Response) -> 
         samesite="strict",
         path="/",
     )
+    _audit("login", user=matched_user, ip=key, success=True)
     return {"user": matched_user}
 
 
 @app.post("/api/auth/logout")
-async def logout(response: Response) -> dict:
+async def logout(
+    request: Request,
+    response: Response,
+    user: Annotated[str, Depends(_authenticated_user)],
+) -> dict:
     response.delete_cookie(SESSION_COOKIE, path="/", secure=True, samesite="strict")
+    _audit("logout", user=user, ip=_client_key(request), success=True)
     return {"ok": True}
 
 
@@ -231,9 +283,17 @@ async def modules(_user: Annotated[str, Depends(_authenticated_user)]) -> dict:
 async def osint_scan(
     payload: ScanRequest,
     request: Request,
-    _user: Annotated[str, Depends(_authenticated_user)],
+    user: Annotated[str, Depends(_authenticated_user)],
 ) -> dict:
     if not scan_limiter.allow(_client_key(request)):
+        _audit(
+            "osint_scan",
+            user=user,
+            ip=_client_key(request),
+            module=payload.module,
+            success=False,
+            reason="rate_limited",
+        )
         raise HTTPException(status_code=429, detail="Scan rate limit exceeded")
 
     target = payload.target.strip()
@@ -241,12 +301,30 @@ async def osint_scan(
     if module == "auto":
         module = detect_target_type(target)
     if module not in ALLOWED_MODULES or module not in OSINT_MODULES:
+        _audit(
+            "osint_scan",
+            user=user,
+            ip=_client_key(request),
+            module=module,
+            success=False,
+            reason="unsupported_module",
+        )
         raise HTTPException(status_code=400, detail="Unsupported web OSINT module")
 
+    started_at = time.monotonic()
     result = await scan_one(
         target,
         category="osint",
         module=module,
         timeout=payload.timeout,
+    )
+    _audit(
+        "osint_scan",
+        user=user,
+        ip=_client_key(request),
+        module=module,
+        target=target,
+        success=True,
+        duration_ms=round((time.monotonic() - started_at) * 1000),
     )
     return result.as_dict()
