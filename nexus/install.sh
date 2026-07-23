@@ -1,183 +1,195 @@
 #!/usr/bin/env bash
-# ──────────────────────────────────────────────────────────────
-#  OSINT Toolkit v4.0 — installer
-# ──────────────────────────────────────────────────────────────
-set -euo pipefail
+set -Eeuo pipefail
 
-PINK='\033[1;35m'
-PURPLE='\033[1;95m'
-CYAN='\033[1;36m'
-GREEN='\033[1;32m'
-YELLOW='\033[1;33m'
-RED='\033[1;31m'
-DIM='\033[2m'
-RESET='\033[0m'
-
-cat <<EOF
-${PINK}
-   ███████╗ ███████╗ ██╗ ███╗   ██╗ ████████╗
-   ██╔═══██╗██╔════╝ ██║ ████╗  ██║ ╚══██╔══╝
-   ██║   ██║███████╗ ██║ ██╔██╗ ██║    ██║
-   ██║   ██║╚════██║ ██║ ██║╚██╗██║    ██║
-   ╚██████╔╝███████║ ██║ ██║ ╚████║    ██║
-    ╚═════╝ ╚══════╝ ╚═╝ ╚═╝  ╚═══╝    ╚═╝${RESET}
-            ${PURPLE}toolkit v4.0${RESET} ${DIM}· installer${RESET}
-
-EOF
-
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYTHON="${PYTHON:-python3}"
-VENV="$DIR/.venv"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="${NEXUS_VENV:-$PROJECT_DIR/.venv}"
 BIN_DIR="${NEXUS_BIN_DIR:-$HOME/.local/bin}"
-PIP_FLAGS=""
+SYSTEM_PYTHON="${PYTHON:-python3}"
+WITH_TOOLS=false
+WITH_DEV=false
+WITH_AI=true
+INSTALL_SYSTEM=false
 
-# ── Python check ──
-echo -e "${CYAN}[1/4]${RESET} Checking Python..."
-if ! command -v "$PYTHON" >/dev/null 2>&1; then
-    echo -e "  ${RED}✗ python3 not found${RESET}"
-    exit 1
-fi
-PY_VER=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-if "$PYTHON" -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)"; then
-    echo -e "  ${GREEN}✓${RESET} Python ${PY_VER} (≥ 3.10 required)"
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+    C_CYAN=$'\033[1;36m'; C_GREEN=$'\033[1;32m'; C_YELLOW=$'\033[1;33m'
+    C_RED=$'\033[1;31m'; C_PURPLE=$'\033[1;95m'; C_DIM=$'\033[2m'; C_RESET=$'\033[0m'
 else
-    echo -e "  ${RED}✗ Python 3.10+ required, found ${PY_VER}${RESET}"
-    exit 1
+    C_CYAN=""; C_GREEN=""; C_YELLOW=""; C_RED=""; C_PURPLE=""; C_DIM=""; C_RESET=""
 fi
 
-# ── System deps ──
-echo -e "${CYAN}[2/4]${RESET} Checking system tools..."
-for cmd in dig whois; do
-    if command -v "$cmd" >/dev/null 2>&1; then
-        echo -e "  ${GREEN}✓${RESET} $cmd"
-    else
-        echo -e "  ${YELLOW}!${RESET} $cmd not found — DNS/WHOIS features will degrade gracefully"
-                echo -e "    ${DIM}install with your package manager: dnsutils whois${RESET}"
-    fi
+usage() {
+    cat <<'EOF'
+Nexus Toolkit installer
+
+Usage: ./install.sh [options]
+
+Options:
+  --with-tools       Install managed optional tools (toutatis, zehef, Mr.Holmes)
+  --dev              Install development/test dependencies
+  --without-ai       Do not install the OpenCode chat runtime
+  --install-system   Install missing dig/whois/git packages with the OS package manager
+  -h, --help         Show this help
+
+Environment:
+  PYTHON             Python executable to use (default: python3)
+  NEXUS_VENV         Virtual environment path (default: ./.venv)
+  NEXUS_BIN_DIR      Launcher directory (default: ~/.local/bin)
+  NO_COLOR=1         Disable terminal colours
+EOF
+}
+
+while (($#)); do
+    case "$1" in
+        --with-tools) WITH_TOOLS=true ;;
+        --dev) WITH_DEV=true ;;
+        --without-ai) WITH_AI=false ;;
+        --install-system) INSTALL_SYSTEM=true ;;
+        -h|--help) usage; exit 0 ;;
+        *) printf '%s\n' "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+    esac
+    shift
 done
 
-# ── Isolated Python environment + package ──
-echo -e "${CYAN}[3/4]${RESET} Installing Nexus in an isolated environment..."
-if [ ! -x "$VENV/bin/python" ]; then
-    "$PYTHON" -m venv "$VENV"
-fi
-PYTHON="$VENV/bin/python"
-"$PYTHON" -m pip install --quiet --upgrade pip setuptools wheel
-"$PYTHON" -m pip install --quiet --editable "$DIR"
-echo -e "  ${GREEN}✓${RESET} Nexus and dependencies installed in $VENV"
+info() { printf '%s→%s %s\n' "$C_CYAN" "$C_RESET" "$*"; }
+ok() { printf '%s✓%s %s\n' "$C_GREEN" "$C_RESET" "$*"; }
+warn() { printf '%s!%s %s\n' "$C_YELLOW" "$C_RESET" "$*" >&2; }
+die() { printf '%s✗%s %s\n' "$C_RED" "$C_RESET" "$*" >&2; exit 1; }
 
-# ── Optional: external OSINT tools ──
-if [ "${1:-}" = "--with-tools" ]; then
-    echo -e "${CYAN}[3.5/4]${RESET} Installing external OSINT tools..."
-    TOOLS_DIR="$HOME/.osint-toolkit/tools"
-    mkdir -p "$TOOLS_DIR"
+on_error() {
+    local line=$1
+    printf '%s✗%s Installation failed near line %s.\n' "$C_RED" "$C_RESET" "$line" >&2
+    printf '  Re-run without --quiet details using: %s -m pip install -e %s\n' \
+        "$VENV_DIR/bin/python" "$PROJECT_DIR" >&2
+}
+trap 'on_error "$LINENO"' ERR
 
-    # Detect Python version for compatibility warnings
-    PYVER=$("$PYTHON" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-    PYMAJ=${PYVER%%.*}; PYMIN=${PYVER##*.}
-    if [ "$PYMAJ" -ge 3 ] && [ "$PYMIN" -ge 13 ]; then
-        echo -e "  ${YELLOW}⚠${RESET}  Python $PYVER detected. Legacy OSINT tools (toutatis, zehef,"
-        echo -e "      Mr.Holmes) may not yet support 3.13+. If installs fail, install"
-        echo -e "      python3.11 / python3.12 and re-run with: PYTHON=python3.11 ./install.sh --with-tools"
-        echo
-    fi
+printf '%s\n' "${C_PURPLE}╭──────────────────────────────────────────────╮${C_RESET}"
+printf '%s\n' "${C_PURPLE}│  NEXUS TOOLKIT · isolated installer          │${C_RESET}"
+printf '%s\n' "${C_PURPLE}╰──────────────────────────────────────────────╯${C_RESET}"
 
-    # pip-installable tools — install one at a time, verify each
-    for pkg in toutatis zehef; do
-        if "$PYTHON" -c "import $pkg" 2>/dev/null; then
-            echo -e "  ${DIM}·${RESET} $pkg already installed"
-        else
-            echo -e "  ${CYAN}·${RESET} Installing $pkg..."
-            if "$PYTHON" -m pip install $PIP_FLAGS "$pkg" 2>&1 | tail -3; then
-                if "$PYTHON" -c "import $pkg" 2>/dev/null \
-                        || command -v "$pkg" >/dev/null 2>&1; then
-                    echo -e "  ${GREEN}✓${RESET} $pkg installed and verified"
-                else
-                    echo -e "  ${YELLOW}!${RESET} $pkg pip succeeded but module not importable"
-                    echo -e "    ${DIM}check: ${PYTHON} -c 'import $pkg' / command -v $pkg${RESET}"
-                fi
-            else
-                echo -e "  ${YELLOW}!${RESET} $pkg install failed (see error above)"
-            fi
-        fi
-    done
+command -v "$SYSTEM_PYTHON" >/dev/null 2>&1 || die "$SYSTEM_PYTHON is not installed."
+"$SYSTEM_PYTHON" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' \
+    || die "Python 3.10 or newer is required."
+PYTHON_VERSION=$("$SYSTEM_PYTHON" -c 'import platform; print(platform.python_version())')
+ok "Python $PYTHON_VERSION"
 
-    # git-cloned (simple)
-    for repo_pair in \
-        "Mr.Holmes|https://github.com/Lucksi/Mr.Holmes.git|mrholmes"
-    do
-        IFS='|' read -r tool_name tool_url dirname <<< "$repo_pair"
-        target="$TOOLS_DIR/$dirname"
-        if [ -d "$target" ]; then
-            echo -e "  ${DIM}·${RESET} $tool_name already cloned"
-        else
-            git clone --depth 1 "$tool_url" "$target" 2>/dev/null \
-                && echo -e "  ${GREEN}✓${RESET} $tool_name cloned" \
-                || echo -e "  ${YELLOW}!${RESET} $tool_name clone failed"
-            if [ -f "$target/requirements.txt" ]; then
-                "$PYTHON" -m pip install --quiet $PIP_FLAGS -r "$target/requirements.txt" 2>/dev/null
-            fi
-        fi
-    done
+missing_system=()
+command -v dig >/dev/null 2>&1 || missing_system+=(dig)
+command -v whois >/dev/null 2>&1 || missing_system+=(whois)
+command -v git >/dev/null 2>&1 || missing_system+=(git)
 
-    # DataProfiler — heavy deps, dedicated venv (capitalone/DataProfiler)
-    DP_DIR="$TOOLS_DIR/dataprofiler"
-    if [ -d "$DP_DIR/venv" ]; then
-        echo -e "  ${DIM}·${RESET} DataProfiler already installed (venv present)"
+if ((${#missing_system[@]})) && "$INSTALL_SYSTEM"; then
+    info "Installing missing system commands: ${missing_system[*]}"
+    if command -v pacman >/dev/null 2>&1; then
+        packages=()
+        [[ " ${missing_system[*]} " == *" dig "* ]] && packages+=(bind)
+        [[ " ${missing_system[*]} " == *" whois "* ]] && packages+=(whois)
+        [[ " ${missing_system[*]} " == *" git "* ]] && packages+=(git)
+        sudo pacman -S --needed "${packages[@]}"
+    elif command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update
+        sudo apt-get install -y python3-venv dnsutils whois git
+    elif command -v dnf >/dev/null 2>&1; then
+        sudo dnf install -y python3 whois bind-utils git
     else
-        echo -e "  ${CYAN}·${RESET} Installing DataProfiler (this may take a few minutes)..."
-        if [ ! -d "$DP_DIR" ]; then
-            git clone --depth 1 https://github.com/capitalone/DataProfiler.git "$DP_DIR" 2>/dev/null \
-                && echo -e "  ${GREEN}✓${RESET} DataProfiler cloned" \
-                || { echo -e "  ${YELLOW}!${RESET} DataProfiler clone failed"; DP_DIR=""; }
-        fi
-        if [ -n "$DP_DIR" ] && [ -d "$DP_DIR" ]; then
-            "$PYTHON" -m venv "$DP_DIR/venv" 2>/dev/null && \
-            "$DP_DIR/venv/bin/pip" install --quiet -U pip setuptools wheel 2>/dev/null && \
-            "$DP_DIR/venv/bin/pip" install --quiet -r "$DP_DIR/requirements.txt" 2>/dev/null && \
-                echo -e "  ${GREEN}✓${RESET} DataProfiler venv ready" \
-                || echo -e "  ${YELLOW}!${RESET} DataProfiler venv install failed (try manually)"
-        fi
+        die "Unsupported package manager; install dig, whois and git manually."
     fi
-    echo
+elif ((${#missing_system[@]})); then
+    warn "Optional system commands missing: ${missing_system[*]}"
+    warn "Run ./install.sh --install-system to install them."
+else
+    ok "System helpers: dig, whois, git"
 fi
 
-# ── User launchers ──
-echo -e "${CYAN}[4/4]${RESET} Installing launcher symlinks..."
-mkdir -p "$BIN_DIR"
-ln -sfn "$VENV/bin/nexus" "$BIN_DIR/nexus"
-ln -sfn "$VENV/bin/osint" "$BIN_DIR/osint"
-echo -e "  ${GREEN}✓${RESET} nexus → $VENV/bin/nexus"
-echo -e "  ${GREEN}✓${RESET} osint → $VENV/bin/osint"
-LAUNCH_HINT="$BIN_DIR/nexus"
+info "Creating isolated environment at $VENV_DIR"
+if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+    "$SYSTEM_PYTHON" -m venv "$VENV_DIR"
+fi
+VENV_PYTHON="$VENV_DIR/bin/python"
+"$VENV_PYTHON" -m pip install --quiet --upgrade pip setuptools wheel
+
+if "$WITH_DEV"; then
+    info "Installing Nexus with development dependencies"
+    "$VENV_PYTHON" -m pip install --quiet --editable "$PROJECT_DIR[dev]"
+else
+    info "Installing Nexus and all Python runtime dependencies"
+    "$VENV_PYTHON" -m pip install --quiet --editable "$PROJECT_DIR"
+fi
+
+"$VENV_PYTHON" - <<'PY'
+from importlib.util import find_spec
+
+required = {
+    "aiohttp", "bs4", "cryptography", "dns", "holehe", "httpx", "lxml",
+    "phonenumbers", "rich", "textual", "tldextract", "whois",
+}
+missing = sorted(name for name in required if find_spec(name) is None)
+if missing:
+    raise SystemExit("Missing Python modules: " + ", ".join(missing))
+PY
+ok "Python runtime verified"
+
+mkdir -p "$BIN_DIR" "$HOME/.osint-toolkit/output" "$HOME/.osint-toolkit/tools"
+ln -sfn "$VENV_DIR/bin/nexus" "$BIN_DIR/nexus"
+ln -sfn "$VENV_DIR/bin/osint" "$BIN_DIR/osint"
+ok "Launchers installed: $BIN_DIR/nexus and $BIN_DIR/osint"
+
+if "$WITH_AI"; then
+    if command -v opencode >/dev/null 2>&1; then
+        ok "OpenCode already installed ($(opencode --version 2>/dev/null | head -n1))"
+    elif command -v bun >/dev/null 2>&1; then
+        info "Installing the OpenCode chat runtime with Bun"
+        bun install --global opencode-ai
+        if [[ -x "$HOME/.bun/bin/opencode" ]]; then
+            ln -sfn "$HOME/.bun/bin/opencode" "$BIN_DIR/opencode"
+        fi
+    elif command -v npm >/dev/null 2>&1; then
+        info "Installing the OpenCode chat runtime with npm"
+        npm install --global --prefix "$HOME/.local" opencode-ai
+    else
+        warn "Bun/npm not found; the TUI chat runtime was not installed."
+        warn "Install OpenCode later, or rerun after installing Bun/npm."
+    fi
+
+    if [[ -x "$BIN_DIR/opencode" ]] || command -v opencode >/dev/null 2>&1; then
+        ok "OpenCode chat runtime available"
+        info "OpenCode will select an available default/free model."
+        info "Optional: run 'opencode auth login' to connect your own provider."
+    fi
+fi
+
+if "$WITH_TOOLS"; then
+    info "Installing managed optional OSINT tools"
+    for package in toutatis zehef; do
+        if "$VENV_PYTHON" -m pip install --quiet "$package"; then
+            ok "$package installed"
+        else
+            warn "$package could not be installed on Python $PYTHON_VERSION"
+        fi
+    done
+
+    MRHOLMES_DIR="$HOME/.osint-toolkit/tools/mrholmes"
+    if [[ -d "$MRHOLMES_DIR/.git" ]]; then
+        info "Updating Mr.Holmes"
+        git -C "$MRHOLMES_DIR" pull --ff-only || warn "Mr.Holmes update skipped"
+    else
+        git clone --depth 1 https://github.com/Lucksi/Mr.Holmes.git "$MRHOLMES_DIR" \
+            && ok "Mr.Holmes installed" \
+            || warn "Mr.Holmes clone failed"
+    fi
+fi
 
 case ":$PATH:" in
     *":$BIN_DIR:"*) ;;
     *)
-        echo -e "  ${YELLOW}!${RESET} $BIN_DIR is not currently in PATH"
-        echo -e "    ${DIM}add this to your shell profile: export PATH=\"\$HOME/.local/bin:\$PATH\"${RESET}"
+        warn "$BIN_DIR is not in the current PATH."
+        printf '  Add this to your shell profile:\n  export PATH="$HOME/.local/bin:$PATH"\n'
         ;;
 esac
 
-mkdir -p "$HOME/.osint-toolkit/output"
-
-cat <<EOF
-
-${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}
-   ${GREEN}✓ Installation complete${RESET}
-${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}
-
-   ${PURPLE}Usage:${RESET}
-     ${CYAN}${LAUNCH_HINT}${RESET}                          ${DIM}# launch TUI${RESET}
-     ${CYAN}${LAUNCH_HINT} test@example.com${RESET}         ${DIM}# auto OSINT${RESET}
-     ${CYAN}${LAUNCH_HINT} -c recon -m ports example.com${RESET}
-     ${CYAN}${LAUNCH_HINT} -c external -m nmap scanme.org${RESET}
-     ${CYAN}${LAUNCH_HINT} --list-modules${RESET}            ${DIM}# show all modules + tool status${RESET}
-
-   ${DIM}Reports saved to: ~/.osint-toolkit/output/${RESET}
-   ${DIM}External tools installed to: ~/.osint-toolkit/tools/${RESET}
-
-   ${YELLOW}To install external tools (Mr.Holmes, toutatis, DaProfiler, Zehef):${RESET}
-     ${CYAN}./install.sh --with-tools${RESET}
-
-EOF
+printf '\n%sInstallation complete.%s\n' "$C_GREEN" "$C_RESET"
+printf '  TUI:       %s\n' "$BIN_DIR/nexus"
+printf '  Modules:   %s --list-modules\n' "$BIN_DIR/nexus"
+printf '  Chat:      available (optional provider: opencode auth login)\n'
+printf '  Reports:   %s\n' "$HOME/.osint-toolkit/output"
+printf '\n%sExternal tools are optional and are detected at runtime.%s\n' "$C_DIM" "$C_RESET"

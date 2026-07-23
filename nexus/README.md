@@ -34,8 +34,11 @@ interface (`ScanResult`) over three tiers of tooling:
 ## Quick start
 
 ```bash
-chmod +x install.sh && ./install.sh
-./install.sh --with-tools                    # + Mr.Holmes, toutatis, zehef, DataProfiler
+chmod +x install.sh
+./install.sh                                 # Nexus + dépendances Python + runtime IA
+./install.sh --with-tools                    # + Mr.Holmes, toutatis et zehef
+./install.sh --dev                           # + pytest, ruff, build et outils de test
+./install.sh --install-system                # + dig, whois et git via le gestionnaire OS
 
 nexus                                        # launch TUI
 nexus test@example.com                       # auto OSINT (target type detected)
@@ -53,8 +56,9 @@ nexus --list-modules                         # all modules + tool install status
 nexus --check-tools                          # diagnose external tool detection
 ```
 
-The command is installed as `nexus` (with `osint` kept as a backward-compatible
-alias). Without a target it launches the TUI.
+The installer creates an isolated `.venv`, installs every Python runtime
+dependency, verifies imports, and creates `~/.local/bin/nexus` (with `osint`
+kept as a backward-compatible alias). Without a target it launches the TUI.
 
 ## Modules
 
@@ -153,7 +157,8 @@ nexus [target] [-c {osint,pentest,external}] [-m MODULE] [-d] [-f]
 
 ## TUI
 
-Launch with `nexus` (no target). Three category tabs, each with grouped modules.
+Launch with `nexus` (no target). Four category tabs expose OSINT, Recon,
+External tools and Chat.
 
 | Key       | Action                              |
 |-----------|-------------------------------------|
@@ -164,6 +169,32 @@ Launch with `nexus` (no target). Three category tabs, each with grouped modules.
 | `Ctrl+S`  | Save current results as JSON        |
 | `Ctrl+L`  | Clear screen                        |
 | `Ctrl+C`  | Quit                                |
+
+### Chat IA
+
+The Chat tab uses [OpenCode](https://opencode.ai/docs/) for generative answers.
+The default installer installs its runtime when Bun or npm is available. Nexus
+does not force a provider/model anymore: OpenCode selects an available default
+or free model, which also avoids failures caused by a stale hard-coded model.
+
+Connecting your own provider is optional:
+
+```bash
+opencode auth login
+opencode auth list
+```
+
+To force a specific model instead of OpenCode's selection:
+
+```bash
+export CHAT_MODEL="provider/model"
+nexus
+```
+
+If a forced model has no matching provider, the Chat tab displays actionable
+setup commands instead of the opaque `No provider available` error. Messages
+containing an email, username, domain, IP or URL always trigger Nexus scans
+locally without requiring a generative provider.
 
 ## Architecture
 
@@ -193,16 +224,73 @@ CLI, TUI, JSON export and correlator all consume the same shape. External tool
 wrappers subclass `ExternalTool`; if a tool is missing they return install
 guidance instead of failing.
 
-## Requirements
+## Dependencies
 
-- Python **3.10+** (developed/tested on 3.14).
-- Python deps in `requirements.txt` (httpx, rich, textual, phonenumbers, holehe,
-  aiohttp, beautifulsoup4, lxml, tldextract, python-whois, dnspython, cryptography).
-- `dig` and `whois` on PATH improve DNS/WHOIS modules (degrade gracefully if absent).
-- EXTERNAL tools are expected to be provided by your OS / package manager.
-- `OSINT_DEFAULT_REGION` (ISO-3166 alpha-2, e.g. `FR`) sets the default country
-  for national-format phone numbers (no `+`/country code). Defaults to `BE`.
-- `GH_TOKEN` / `GITHUB_TOKEN` raise the GitHub OSINT rate limit (optional).
+### Required system components
+
+| Component | Purpose | Installation |
+|---|---|---|
+| Python 3.10+ | Nexus runtime and TUI | package manager |
+| `venv` + `pip` | isolated installation | normally bundled with Python; `python3-venv` on Debian/Ubuntu |
+| CA certificates | HTTPS sources | normally installed by the OS |
+
+### Recommended system helpers
+
+| Command | Used by | Arch Linux | Debian/Ubuntu | Fedora |
+|---|---|---|---|---|
+| `dig` | DNS records and DNSSEC | `bind` | `dnsutils` | `bind-utils` |
+| `whois` | domain/IP registration | `whois` | `whois` | `whois` |
+| `git` | managed optional tools | `git` | `git` | `git` |
+| Bun or npm | OpenCode Chat runtime | `bun` / `npm` | `bun` / `npm` | `bun` / `npm` |
+
+Use `./install.sh --install-system` to install `dig`, `whois` and `git` with a
+supported package manager. It requests `sudo` only for this explicit option.
+
+### Python runtime dependencies
+
+All packages below are declared in `pyproject.toml` and installed automatically
+inside `.venv` by `./install.sh`.
+
+| Package | Purpose |
+|---|---|
+| `httpx` | shared asynchronous HTTP client |
+| `rich` | CLI rendering and reports |
+| `textual` | interactive terminal UI |
+| `phonenumbers` | offline phone parsing and normalization |
+| `holehe` | public email-account checks |
+| `aiohttp` | asynchronous integrations used by OSINT sources |
+| `beautifulsoup4` | HTML parsing |
+| `lxml` | robust XML/HTML parser |
+| `tldextract` | registered-domain extraction |
+| `python-whois` | WHOIS parsing |
+| `dnspython` | DNS queries and record parsing |
+| `cryptography` | certificate and cryptographic inspection |
+
+Development dependencies (`./install.sh --dev`) are `pytest`,
+`pytest-asyncio`, `respx`, `ruff`, and `build`.
+
+### Optional runtime components
+
+- OpenCode is installed by default when Bun/npm is present. It can select an
+  available free/default model; provider authentication remains optional and
+  explicit through `opencode auth login`.
+- `toutatis`, `zehef`, and Mr.Holmes are managed by
+  `./install.sh --with-tools`.
+- The large EXTERNAL catalog (Nmap, Nuclei, ffuf, SQLMap, Hashcat, Aircrack-ng,
+  etc.) is optional and detected at runtime; Nexus prints an installation hint
+  when a selected binary is absent.
+
+### Environment variables
+
+| Variable | Effect |
+|---|---|
+| `OSINT_DEFAULT_REGION` | ISO-3166 alpha-2 default for national phone numbers; defaults to `BE` |
+| `GH_TOKEN` / `GITHUB_TOKEN` | raises GitHub public API rate limits |
+| `IG_SESSION_ID` | enables authenticated Instagram features in Toutatis |
+| `CHAT_MODEL` | optional OpenCode model override (`provider/model`) |
+| `OPENCODE_BIN` | custom path to the OpenCode executable |
+| `NEXUS_VENV` | custom virtual-environment location for the installer |
+| `NEXUS_BIN_DIR` | custom launcher directory; defaults to `~/.local/bin` |
 
 ---
 

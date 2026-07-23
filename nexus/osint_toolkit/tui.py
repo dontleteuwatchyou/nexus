@@ -6,10 +6,12 @@ import asyncio
 import json
 import os
 import re
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
 
+from rich.markup import escape
 from textual import events, on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -17,10 +19,48 @@ from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.reactive import reactive
 from textual.widgets import (Footer, Header, Input, ListItem, ListView, Static)
 
-CHAT_SESSION = "nexus-tui-chat"
-OPENCODE_BIN = os.environ.get("OPENCODE_BIN", "opencode")
+from .correlate import (PENTEST_TARGET_TYPES, detect_target_type, scan_chained,
+                        scan_full, scan_one)
+from .external import find_tool
+from .models import ScanResult
 
-CHAT_MODEL = os.environ.get("CHAT_MODEL", "opencode/big-pickle")
+CHAT_SESSION = "nexus-tui-chat"
+def _find_opencode() -> str:
+    configured = os.environ.get("OPENCODE_BIN", "").strip()
+    candidates = [
+        configured,
+        shutil.which("opencode") or "",
+        str(Path.home() / ".opencode" / "bin" / "opencode"),
+        str(Path.home() / ".local" / "bin" / "opencode"),
+        str(Path.home() / ".bun" / "bin" / "opencode"),
+    ]
+    return next((candidate for candidate in candidates if candidate and Path(candidate).is_file()), "opencode")
+
+
+OPENCODE_BIN = _find_opencode()
+CHAT_MODEL = os.environ.get("CHAT_MODEL", "").strip()
+
+
+def _friendly_provider_error(output: str) -> str | None:
+    lowered = output.lower()
+    provider_failures = (
+        "no provider available",
+        "no providers available",
+        "provider not found",
+        "provider is not configured",
+        "no provider configured",
+    )
+    if not any(message in lowered for message in provider_failures):
+        return None
+    return (
+        "Assistant IA non configuré.\n\n"
+        "Dans un terminal, lance :\n"
+        "  opencode auth login\n"
+        "  opencode auth list\n\n"
+        "Puis choisis le modèle avec, par exemple :\n"
+        "  export CHAT_MODEL='provider/model'\n\n"
+        "Les scans OSINT saisis dans ce chat fonctionnent même sans provider."
+    )
 
 # Expressions pour detecter les cibles OSINT directement (fallback si l'IA refuse)
 RE_EMAIL = re.compile(r'[\w\.-]+@[\w\.-]+\.\w{2,}')
@@ -53,13 +93,6 @@ SOCIAL_PATTERNS = {
 # Motifs pour detecter des pseudos/usernames dans le texte
 RE_TAG = re.compile(r'tag\s+(?:est\s+)?(\w[\w.-]*)', re.IGNORECASE)
 RE_APPELLE = re.compile(r'(?:surnom|pseudo|appel(?:le|lé|er|lait)?)[:\s]+(\w[\w.-]*)', re.IGNORECASE)
-
-from rich.markup import escape
-
-from .correlate import (EXTERNAL_MODULES, PENTEST_TARGET_TYPES,
-                         detect_target_type, scan_chained, scan_full, scan_one)
-from .external import ALL_TOOLS, find_tool
-from .models import ScanResult
 
 OUTPUT_DIR = Path.home() / ".osint-toolkit" / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -906,9 +939,10 @@ class OsintApp(App):
                              progress_cb=None) -> str:
         project_dir = Path(__file__).resolve().parent.parent
         args = [OPENCODE_BIN, "run", msg, "--auto",
-                "--model", "opencode/big-pickle",
                 "--agent", "build",
                 "--print-logs", "--log-level", "ERROR"]
+        if CHAT_MODEL:
+            args.extend(["--model", CHAT_MODEL])
         if not is_first:
             args.append("--continue")
         proc = None
@@ -936,7 +970,13 @@ class OsintApp(App):
             await proc.wait()
 
         except FileNotFoundError:
-            return f"[err]✗ {OPENCODE_BIN} n'est pas installé[/err]"
+            return (
+                "Assistant IA non installé.\n\n"
+                "Relance l'installation avec :\n"
+                "  ./install.sh\n\n"
+                "Puis configure un fournisseur :\n"
+                "  opencode auth login"
+            )
         except asyncio.TimeoutError:
             if proc and proc.returncode is None:
                 proc.kill()
@@ -947,6 +987,9 @@ class OsintApp(App):
             return f"[err]✗ Erreur: {e}[/err]"
 
         result = "\n".join(response_parts).strip()
+        provider_error = _friendly_provider_error(result)
+        if provider_error:
+            return provider_error
         return result or "[dim]Pas de réponse[/dim]"
 
     def _detect_targets(self, msg: str) -> list[tuple[str, str]]:
