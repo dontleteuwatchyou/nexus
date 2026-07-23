@@ -1,8 +1,8 @@
 # Nexus Toolkit
 
 Plateforme unifiée d’**OSINT**, de **reconnaissance technique autorisée** et
-d’orchestration d’outils de sécurité. Le dépôt réunit le moteur Python/TUI et
-son compagnon web statique.
+d’orchestration d’outils de sécurité. Ce dépôt contient le moteur Python,
+sa CLI et son interface TUI.
 
 > **Projet en développement actif.** Les résultats doivent être qualifiés
 > manuellement. N’utilisez les modules actifs que sur vos propres systèmes, un
@@ -20,14 +20,10 @@ son compagnon web statique.
 │   ├── tests/
 │   ├── pyproject.toml
 │   └── install.sh
-├── web/                   # sources du Web Lab statique
-├── docs/                  # version publiée par GitHub Pages
 └── .github/workflows/     # intégration continue
 ```
 
-## Deux interfaces complémentaires
-
-### Nexus local
+## Nexus
 
 Le moteur complet fonctionne en Python 3.10+ et fournit :
 
@@ -66,58 +62,15 @@ nexus --list-modules
 nexus --check-tools
 ```
 
-### Web Lab
-
-Le Web Lab est une version statique compatible GitHub Pages. Il propose :
-
-- détection locale de cible et plus de 50 pivots publics ;
-- enrichissement passif optionnel via Google Public DNS, GitHub, IPWhois et
-  mempool.space ;
-- 12 parcours OSINT, un checker Discord et 8 parcours de reconnaissance guidée ;
-- historique local et exports JSON, CSV et Markdown.
-
-Il ne peut pas exécuter Nmap, des sockets TCP, Python ou les outils système du
-moteur local. Les API passives ne sont contactées que lorsque l’utilisateur
-active explicitement l’enrichissement.
-
-**Site :** https://dontleteuwatchyou.github.io/nexus/
-
-## APIs et confidentialité
-
-| Source | Usage | Déclenchement |
-|---|---|---|
-| Google Public DNS | A, AAAA, MX et TXT | optionnel dans le Web Lab |
-| GitHub API | profil public exact | optionnel dans le Web Lab |
-| IPWhois | ASN et zone IP approximative | optionnel dans le Web Lab |
-| mempool.space | données publiques Bitcoin | optionnel dans le Web Lab |
-| Sources des modules Python | OSINT et registres publics | depuis Nexus local |
-
-Chaque service reçoit la cible nécessaire à la requête et applique ses propres
-conditions, quotas et règles de confidentialité. Aucun rapport opérationnel,
-fichier de cibles ou résultat d’audit local n’est publié dans ce dépôt.
-
 ## Développement
 
 ```bash
 cd nexus
-python -m pip install -e ".[dev,web]"
+python -m pip install -e ".[dev]"
 ruff check --select E9,F63,F7,F82 osint_toolkit tests
 pytest
 python -m build
 ```
-
-Le Web Lab ne requiert aucune compilation. `web/` contient les sources et
-`docs/` la copie déployée.
-
-## Auto-hébergement Web
-
-Une instance complète peut être hébergée localement avec Docker, DuckDNS,
-Caddy/HTTPS et l’API FastAPI authentifiée. Dans ce mode, le Web Lab peut appeler
-les modules OSINT passifs du moteur Python sans exposer les clés API dans le
-navigateur.
-
-Voir [SELF_HOSTING.md](SELF_HOSTING.md) pour la configuration, les redirections
-de ports et les précautions de sécurité.
 
 ## Avertissement légal
 

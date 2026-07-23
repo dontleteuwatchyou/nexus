@@ -14,6 +14,14 @@ build/
 dist/
 node_modules/
 web/
+/.env.example
+/Caddyfile
+/SELF_HOSTING.md
+/compose.yaml
+/nexus/.dockerignore
+/nexus/Dockerfile
+/nexus/osint_toolkit/api.py
+/nexus/tests/test_api.py
 .DS_Store
 *.log
 logs/
