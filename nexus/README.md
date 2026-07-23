@@ -174,14 +174,31 @@ External tools and Chat.
 
 The Chat tab now uses the provider-independent **Nexus AI** engine. Nexus AI
 Core requires no account, API key, GPU or language model: it detects targets,
-routes Nexus tools and remains useful on low-end computers.
+routes Nexus tools and remains useful on low-end computers. At startup Nexus
+measures local CPU threads, RAM and NVIDIA VRAM, then selects an inference
+profile without transmitting that hardware information.
+
+| Profile | Typical machine | Local model |
+|---|---|---|
+| `core` | less than 3 GiB RAM | none; deterministic routing |
+| `lite` | 3–6 GiB RAM | Qwen3 0.6B |
+| `compact` | 6–10 GiB RAM or small CPU | Qwen3 1.7B |
+| `balanced` | modern CPU or GPU with 5+ GiB VRAM | Qwen3 4B |
+| `performance` | GPU with 10+ GiB VRAM | Qwen3 8B |
+
+Inspect the automatic choice before downloading anything:
+
+```bash
+nexus --ai-status
+./scripts/local_ai.sh profile
+```
 
 Generative answers are optional. Nexus can connect to any local
 OpenAI-compatible server (llama.cpp, an Ollama-compatible proxy, LM Studio,
 etc.):
 
 ```bash
-./scripts/local_ai.sh start               # Docker + official Qwen3-4B GGUF
+./scripts/local_ai.sh start               # Docker + modèle Qwen3 adapté au matériel
 ./scripts/local_ai.sh status
 export NEXUS_AI_ENDPOINT="http://127.0.0.1:8080/v1"
 export NEXUS_AI_MODEL="local"
@@ -191,6 +208,13 @@ nexus --chat
 If the local server is absent, Nexus automatically falls back to Core mode;
 OSINT scans continue to work. Conversation memory stays in the running process
 and is bounded to avoid unrestrained RAM growth.
+
+Automatic selection can be overridden for one launch:
+
+```bash
+NEXUS_AI_PROFILE=compact ./scripts/local_ai.sh start
+nexus --ai-profile core --chat
+```
 
 The first local start downloads roughly 2.5 GB into the Hugging Face cache.
 The server only binds to `127.0.0.1`; it is not exposed to the network.
@@ -288,11 +312,15 @@ Development dependencies (`./install.sh --dev`) are `pytest`,
 | `GH_TOKEN` / `GITHUB_TOKEN` | raises GitHub public API rate limits |
 | `IG_SESSION_ID` | enables authenticated Instagram features in Toutatis |
 | `NEXUS_AI_ENDPOINT` | local OpenAI-compatible endpoint; defaults to `http://127.0.0.1:8080/v1` |
+| `NEXUS_AI_PROFILE` | `auto`, `core`, `lite`, `compact`, `balanced` or `performance` |
 | `NEXUS_AI_MODEL` | model identifier exposed by the local server |
 | `NEXUS_AI_API_KEY` | local server token; defaults to `nexus-local` |
 | `NEXUS_AI_LOCAL` | set to `0` to force model-free Core mode |
 | `NEXUS_AI_TIMEOUT` | local inference timeout in seconds |
 | `NEXUS_AI_MAX_TOKENS` | maximum generated tokens; defaults to `180` for CPU compatibility |
+| `NEXUS_AI_CONTEXT` | override the automatically selected llama.cpp context |
+| `NEXUS_AI_THREADS` | override the automatically selected CPU thread count |
+| `NEXUS_AI_GPU_LAYERS` | override automatic CUDA offload |
 | `NEXUS_VENV` | custom virtual-environment location for the installer |
 | `NEXUS_BIN_DIR` | custom launcher directory; defaults to `~/.local/bin` |
 

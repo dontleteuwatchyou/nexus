@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 import httpx
 
+from .performance import AIProfile, select_profile
 from .rag import KnowledgeIndex
 
 SYSTEM_PROMPT = """/no_think
@@ -26,25 +27,40 @@ méthodes défensives et les preuves reproductibles."""
 
 @dataclass(frozen=True)
 class NexusAIConfig:
+    profile: AIProfile = field(default_factory=select_profile)
     endpoint: str = field(
         default_factory=lambda: os.getenv(
             "NEXUS_AI_ENDPOINT", "http://127.0.0.1:8080/v1"
         ).rstrip("/")
     )
-    model: str = field(default_factory=lambda: os.getenv("NEXUS_AI_MODEL", "local"))
+    model: str | None = None
     api_key: str = field(
         default_factory=lambda: os.getenv("NEXUS_AI_API_KEY", "nexus-local")
     )
-    timeout: float = field(
-        default_factory=lambda: float(os.getenv("NEXUS_AI_TIMEOUT", "120"))
-    )
-    max_tokens: int = field(
-        default_factory=lambda: int(os.getenv("NEXUS_AI_MAX_TOKENS", "180"))
-    )
-    enabled: bool = field(
-        default_factory=lambda: os.getenv("NEXUS_AI_LOCAL", "auto").lower()
-        not in {"0", "false", "off"}
-    )
+    timeout: float | None = None
+    max_tokens: int | None = None
+    enabled: bool | None = None
+
+    def __post_init__(self) -> None:
+        model = os.getenv("NEXUS_AI_MODEL") or self.model or (
+            "local" if self.profile.uses_model else None
+        )
+        timeout = self.timeout
+        if timeout is None:
+            timeout = float(os.getenv("NEXUS_AI_TIMEOUT", "120"))
+        max_tokens = self.max_tokens
+        if max_tokens is None:
+            max_tokens = int(
+                os.getenv("NEXUS_AI_MAX_TOKENS", str(self.profile.max_tokens or 180))
+            )
+        enabled_env = os.getenv("NEXUS_AI_LOCAL", "auto").lower()
+        enabled = self.enabled
+        if enabled is None:
+            enabled = self.profile.uses_model and enabled_env not in {"0", "false", "off"}
+        object.__setattr__(self, "model", model)
+        object.__setattr__(self, "timeout", timeout)
+        object.__setattr__(self, "max_tokens", max_tokens)
+        object.__setattr__(self, "enabled", enabled)
 
 
 class NexusAI:
@@ -57,7 +73,14 @@ class NexusAI:
 
     @property
     def mode(self) -> str:
-        return "local-model" if self.config.enabled else "core"
+        return self.config.profile.name if self.config.enabled else "core"
+
+    @property
+    def runtime_summary(self) -> str:
+        profile = self.config.profile
+        if not self.config.enabled:
+            return "core · sans modèle"
+        return f"{profile.name} · {profile.model} · contexte {profile.context_size}"
 
     def reset(self) -> None:
         self.history.clear()

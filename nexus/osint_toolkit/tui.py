@@ -887,7 +887,14 @@ class OsintApp(App):
 
     def _chat_render(self, messages: list[dict]) -> str:
         if not messages:
-            return self.CHAT_HELP + "\n"
+            if not hasattr(self, "_nexus_ai"):
+                self._nexus_ai = NexusAI()
+            return (
+                self.CHAT_HELP
+                + f"\n\n[#737373]Profil local : "
+                + escape(self._nexus_ai.runtime_summary)
+                + "[/]\n"
+            )
         out = []
         for m in messages:
             role = m["role"]

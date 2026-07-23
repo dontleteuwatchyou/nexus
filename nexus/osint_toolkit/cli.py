@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -324,12 +325,28 @@ Examples:
     parser.add_argument("--tui", action="store_true", help="Force TUI mode")
     parser.add_argument("--chat", action="store_true",
                          help="Lancer Nexus AI dans la TUI")
+    parser.add_argument("--ai-status", action="store_true",
+                         help="Afficher le matériel et le profil Nexus AI sélectionné")
+    parser.add_argument(
+        "--ai-profile",
+        choices=["auto", "core", "lite", "compact", "balanced", "performance"],
+        help="Forcer le profil Nexus AI pour cette exécution",
+    )
     parser.add_argument("--list-modules", action="store_true",
                          help="List available modules and exit")
     parser.add_argument("--check-tools", action="store_true",
                          help="Diagnose external tool detection and exit")
     parser.add_argument("--version", action="version", version="Nexus Toolkit 4.0")
     args = parser.parse_args()
+
+    if args.ai_profile:
+        os.environ["NEXUS_AI_PROFILE"] = args.ai_profile
+
+    if args.ai_status:
+        from .ai.performance import runtime_report
+
+        console.print_json(data=runtime_report(args.ai_profile))
+        return
 
     if args.check_tools:
         from .external import ALL_TOOLS

@@ -5,7 +5,12 @@ import asyncio
 import httpx
 import respx
 
-from osint_toolkit.ai import KnowledgeIndex, NexusAI, NexusAIConfig
+from osint_toolkit.ai import (
+    AIProfile,
+    KnowledgeIndex,
+    NexusAI,
+    NexusAIConfig,
+)
 
 
 def test_core_mode_works_without_model():
@@ -24,6 +29,13 @@ def test_memory_is_bounded():
 def test_configuration_has_local_default():
     config = NexusAIConfig()
     assert config.endpoint.startswith("http://127.0.0.1:")
+
+
+def test_configuration_uses_profile_token_budget():
+    profile = AIProfile("test", "test profile", "test/model", 2048, 77, 2)
+    config = NexusAIConfig(profile=profile)
+    assert config.max_tokens == 77
+    assert config.enabled is True
 
 
 def test_rag_retrieves_relevant_document():

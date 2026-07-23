@@ -19,10 +19,14 @@ Le moteur possède :
 - une intégration directe dans la TUI et dans `nexus --chat` ;
 - un routage OSINT passif immédiat ;
 - une confirmation pentest actif mémorisée une seule fois pendant la session.
+- une détection locale CPU, RAM, GPU NVIDIA et VRAM sans dépendance lourde ;
+- cinq profils d’inférence adaptatifs, de Core à Qwen3-8B accéléré par CUDA ;
+- un réglage automatique du modèle, du contexte, des tokens et des threads ;
+- les diagnostics `nexus --ai-status` et `scripts/local_ai.sh profile`.
 
-Un serveur local llama.cpp est fourni par `scripts/local_ai.sh`. Le modèle de
-référence est `Qwen/Qwen3-4B-GGUF:Q4_K_M`, accessible uniquement sur
-`127.0.0.1:8080` avec une clé locale.
+Un serveur local llama.cpp est fourni par `scripts/local_ai.sh`. Le modèle est
+choisi entre Qwen3 0.6B, 1.7B, 4B et 8B selon la machine, et reste accessible
+uniquement sur `127.0.0.1:8080` avec une clé locale.
 
 ## Résultats mesurés sur le premier PC
 
