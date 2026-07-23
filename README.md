@@ -103,7 +103,7 @@ cd nexus
 python -m pip install -e ".[dev]"
 ruff check --select E9,F63,F7,F82 osint_toolkit tests
 pytest
-python -m build --no-isolation
+python -m build
 ```
 
 Le Web Lab ne requiert aucune compilation. `web/` contient les sources et
