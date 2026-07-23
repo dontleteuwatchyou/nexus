@@ -8,6 +8,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --uid 10001 nexus
+RUN mkdir -p /home/nexus/.osint-toolkit/tools /home/nexus/.osint-toolkit/output \
+    && chown -R nexus:nexus /home/nexus/.osint-toolkit
 WORKDIR /app
 
 COPY pyproject.toml README.md LICENSE ./
