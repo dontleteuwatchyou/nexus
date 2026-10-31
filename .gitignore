@@ -1,0 +1,39 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+# ── Virtual envs ──
+.venv/
+venv/
+env/
+ENV/
+# ── Caches / tooling ──
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.opencode/
+# ── Editors / OS ──
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+# ── Runtime output (generated reports) ──
+*.log
+scan_*.json
+scan_*.html
+
+# ── SENSITIVE: never commit real engagement data ──
+# Target lists and scan reports describe real third-party systems. Keep them
+# out of version control entirely.
+targets_*.txt
+*_pentest_*.txt
+*_pentest_*.html
+run_pentest_*.sh
+_private/
+rapport_*.txt
+summary_*.txt

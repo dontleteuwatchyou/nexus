@@ -1,0 +1,14 @@
+# Normalise line endings: LF in the repo and in working trees on every OS.
+* text=auto eol=lf
+
+# Shell / PowerShell scripts keep LF (install.sh is run on Linux/macOS).
+*.sh  text eol=lf
+*.ps1 text eol=lf
+
+# Binary assets — never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
