@@ -1,4 +1,18 @@
-# Nexus Toolkit · v4.1
+<div align="center">
+
+# Nexus Toolkit
+
+**OSINT + sécurité offensive, unifié — en detection-only.**  
+Une seule interface (`ScanResult`) sur 190+ outils : recon passif, découverte de panels d'admin et de failles, et un rapport de vulnérabilités priorisé et corrélé entre outils.
+
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab)
+![Platforms](https://img.shields.io/badge/Windows%20%7C%20Linux%20%7C%20macOS-8b7cf6)
+![Licence](https://img.shields.io/badge/licence-MIT-6b5ce0)
+[![CI](https://github.com/dontleteuwatchyou/nexus/actions/workflows/ci.yml/badge.svg)](https://github.com/dontleteuwatchyou/nexus/actions/workflows/ci.yml)
+
+</div>
+
+---
 
 A unified **OSINT + offensive security** framework. It exposes one consistent
 interface (`ScanResult`) over three tiers of tooling:
