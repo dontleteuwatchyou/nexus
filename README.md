@@ -214,7 +214,7 @@ guidance instead of failing.
 
 ## Requirements
 
-- Python **3.10+** (developed/tested on 3.14).
+- Python **3.10+** (CI runs the test suite on 3.10 – 3.13).
 - Python deps in `requirements.txt` (httpx, rich, textual, phonenumbers, holehe,
   aiohttp, beautifulsoup4, lxml, tldextract, python-whois, dnspython, cryptography).
 - `dig` and `whois` on PATH improve DNS/WHOIS modules (degrade gracefully if absent).
@@ -222,6 +222,32 @@ guidance instead of failing.
 - `OSINT_DEFAULT_REGION` (ISO-3166 alpha-2, e.g. `FR`) sets the default country
   for national-format phone numbers (no `+`/country code). Defaults to `BE`.
 - `GH_TOKEN` / `GITHUB_TOKEN` raise the GitHub OSINT rate limit (optional).
+
+## Credits & acknowledgements
+
+Nexus is a **convenience / orchestration layer**. It does not bundle, reimplement
+or take credit for the third-party tools it detects and shells out to — all credit
+for the heavy lifting belongs to their authors, and each tool remains under its own
+license.
+
+**Built on these Python libraries:** httpx, Rich, Textual, BeautifulSoup, lxml,
+phonenumbers, holehe, dnspython, python-whois, tldextract, aiohttp and cryptography.
+
+**Wraps (detection-only, installed separately by the user)** tools from the security
+community, including the ProjectDiscovery suite (nuclei, httpx, subfinder, naabu,
+katana, dnsx), nmap, ffuf, gobuster, feroxbuster, sqlmap, dalfox, Sherlock, Holehe,
+theHarvester, Amass, WPScan, SecLists and many more — run `nexus --list-modules` for
+the full set. Each is the work of its respective authors and subject to its own terms.
+
+**OSINT sources:** the passive modules query public third-party services (crt.sh, the
+Wayback Machine, XposedOrNot, Hudson Rock, ip-api, GreyNoise, AlienVault OTX and
+others) — thanks to the operators of those free services.
+
+## License
+
+Released under the [MIT License](LICENSE). You alone are responsible for using Nexus
+lawfully — see [SECURITY.md](SECURITY.md) and the authorisation notice at the top of
+this file.
 
 ---
 
