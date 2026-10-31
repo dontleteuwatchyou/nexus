@@ -9,6 +9,7 @@ Une seule interface (`ScanResult`) sur 190+ outils : recon passif, découverte d
 ![Platforms](https://img.shields.io/badge/Windows%20%7C%20Linux%20%7C%20macOS-8b7cf6)
 ![Licence](https://img.shields.io/badge/licence-MIT-6b5ce0)
 [![CI](https://github.com/dontleteuwatchyou/nexus/actions/workflows/ci.yml/badge.svg)](https://github.com/dontleteuwatchyou/nexus/actions/workflows/ci.yml)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-soutenir-ff5e5b?logo=ko-fi&logoColor=white)](https://ko-fi.com/forsakengh)
 
 </div>
 
