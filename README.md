@@ -46,12 +46,77 @@ interface (`ScanResult`) over three tiers of tooling:
     ╚═════╝ ╚══════╝ ╚═╝ ╚═╝  ╚═══╝    ╚═╝
 ```
 
-## Quick start
+## Installation
+
+You need **Python 3.10 or newer** and **Git**.
+
+<details>
+<summary><b>Don't have them yet?</b></summary>
+
+- **Windows**: `winget install Python.Python.3.12` then `winget install Git.Git` (or the installers from [python.org](https://www.python.org/downloads/) — tick *Add python.exe to PATH* — and [git-scm.com](https://git-scm.com/download/win)), then open a new terminal.
+- **Debian / Ubuntu**: `sudo apt install python3 python3-pip git dnsutils whois`
+- **Fedora**: `sudo dnf install python3 python3-pip git bind-utils whois`
+- **Arch**: `sudo pacman -S python python-pip git bind whois`
+- **macOS**: `brew install python git`
+
+Check with `python --version` (Windows) or `python3 --version` (Linux/macOS).
+</details>
+
+### 1. Download
+
+```bash
+git clone https://github.com/dontleteuwatchyou/nexus.git
+cd nexus
+```
+
+No Git? Download the ZIP from the green **Code** button on GitHub, extract it and open a terminal in the extracted folder.
+
+### 2. Install
+
+**Windows** (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+**Linux / macOS**:
 
 ```bash
 chmod +x install.sh && ./install.sh
-./install.sh --with-tools                    # + Mr.Holmes, toutatis, zehef, DataProfiler
+```
 
+Add `-WithTools` (Windows) or `--with-tools` (Linux/macOS) to also install the optional external tools (Mr.Holmes, toutatis, zehef, DataProfiler).
+
+<details>
+<summary><b>Manual install</b> (any OS, in a virtual environment)</summary>
+
+```bash
+python -m venv .venv
+# Windows:      .venv\Scripts\activate
+# Linux/macOS:  source .venv/bin/activate
+pip install -e .
+```
+</details>
+
+### 3. Check
+
+```bash
+nexus --version         # Nexus Toolkit 4.1
+nexus --check-tools     # which external tools were found
+```
+
+**`nexus` not found?** pip installed it in a folder that is not on your PATH. Either run it as a module — `py -3 -m osint_toolkit` on Windows, `python3 -m osint_toolkit` on Linux/macOS — or add that folder to your PATH (on Windows it is shown by `py -3 -m site --user-base`, plus `\Scripts`; on Linux it is usually `~/.local/bin`).
+
+### Update / uninstall
+
+```bash
+git pull                          # in the nexus folder, then re-run the installer
+pip uninstall nexus-toolkit       # remove
+```
+
+## Quick start
+
+```bash
 nexus                                        # launch TUI
 nexus test@example.com                       # auto OSINT (target type detected)
 nexus 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa      # auto crypto (BTC/ETH detected)
