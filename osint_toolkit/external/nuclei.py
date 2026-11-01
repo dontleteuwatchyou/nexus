@@ -37,7 +37,7 @@ def parse_nuclei_jsonl(stdout: str) -> list[dict]:
             sev = "info"
         name = info.get("name") or f.get("template-id") or f.get("template") or "finding"
         matched = f.get("matched-at") or f.get("host") or f.get("url") or ""
-        desc = (info.get("description") or "").strip().replace("\n", " ")[:200]
+        desc = (info.get("description") or "").strip().replace("\n", " ")
         out.append({
             "severity": sev,
             "name": str(name),
@@ -82,7 +82,7 @@ class Nuclei(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"nuclei failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"nuclei failed (rc={rc}): {stderr}")
             return result
 
         items = parse_nuclei_jsonl(stdout)

@@ -52,13 +52,13 @@ class SecretsDump(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"secretsdump failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"secretsdump failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if any(k in line.lower() for k in ["hash:", "ntlm:", "lm:", "aes:", "kerberos:", "credential", "secret"]):
-                result.add("secretsdump", "Credential", line[:160], "error")
+                result.add("secretsdump", "Credential", line, "error")
 
         return result
 
@@ -126,12 +126,12 @@ class Psexec(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"psexec failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"psexec failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if line.strip():
-                result.add("psexec", "Output", line[:160], "info")
+                result.add("psexec", "Output", line, "info")
 
         return result
 
@@ -174,11 +174,11 @@ class Wmiexec(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"wmiexec failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"wmiexec failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if line.strip():
-                result.add("wmiexec", "Output", line[:160], "info")
+                result.add("wmiexec", "Output", line, "info")
 
         return result

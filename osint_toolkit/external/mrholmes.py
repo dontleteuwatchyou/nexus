@@ -132,7 +132,7 @@ class MrHolmes(ExternalTool):
             err_lines = [l for l in stderr.splitlines() if l.strip()]
             result.errors.append(f"Mr.Holmes exited {rc}. Last stderr lines:")
             for line in err_lines[-10:]:
-                result.add("stderr", "line", line[:200], "error")
+                result.add("stderr", "line", line, "error")
             result.add("hint", "Possible cause",
                         "Mr.Holmes may be interactive or incompatible with your Python "
                         "version. Try running manually: "
@@ -167,6 +167,6 @@ class MrHolmes(ExternalTool):
                      "[+]"]):
                 interest.append(l)
         for line in interest[:40]:
-            result.add("findings", "line", line[:160], "info")
+            result.add("findings", "line", line, "info")
 
         return result

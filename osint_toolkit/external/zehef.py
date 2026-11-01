@@ -41,7 +41,7 @@ class Zehef(ExternalTool):
         clean = re.sub(r"\x1b\[[0-9;]*m", "", stdout)
 
         if rc != 0 and not clean.strip():
-            result.errors.append(f"zehef failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"zehef failed (rc={rc}): {stderr}")
             return result
 
         # Zehef formats output with section headers and [+]/[-] tags.
@@ -67,12 +67,12 @@ class Zehef(ExternalTool):
             result.add("accounts", "Sites with account",
                        str(len(sites_registered)), "warn")
             for s in sites_registered[:30]:
-                result.add("accounts", "line", s[:160], "warn")
+                result.add("accounts", "line", s, "warn")
 
         if breaches:
             result.add("breaches", "Breach mentions", str(len(breaches)), "warn")
             for b in breaches[:15]:
-                result.add("breaches", "line", b[:160], "warn")
+                result.add("breaches", "line", b, "warn")
 
         if urls:
             for u in urls[:20]:

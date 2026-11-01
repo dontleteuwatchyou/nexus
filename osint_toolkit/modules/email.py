@@ -363,7 +363,7 @@ async def scan(email: str, timeout: float = 25.0) -> ScanResult:
         if gravatar.get("location"):
             result.add("gravatar", "Location", gravatar["location"], "warn")
         if gravatar.get("about"):
-            result.add("gravatar", "About", gravatar["about"][:160], "info")
+            result.add("gravatar", "About", gravatar["about"], "info")
         for acc in gravatar.get("verified_accounts", []):
             result.add("gravatar", f"Verified · {acc['shortname']}",
                        acc["url"], "warn", url=acc["url"])

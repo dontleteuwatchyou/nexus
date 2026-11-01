@@ -37,3 +37,4 @@ run_pentest_*.sh
 _private/
 rapport_*.txt
 summary_*.txt
+Claude outputs/

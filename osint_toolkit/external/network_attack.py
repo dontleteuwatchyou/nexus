@@ -78,13 +78,13 @@ class Unicornscan(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"unicornscan failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"unicornscan failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("open" in line or "tcp" in line or "udp" in line):
-                result.add("unicornscan", "Port", line[:160], "found")
+                result.add("unicornscan", "Port", line, "found")
 
         return result
 
@@ -116,13 +116,13 @@ class Oscanner(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"oscanner failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"oscanner failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("Oracle" in line or "SID" in line or "open" in line):
-                result.add("oscanner", "Oracle", line[:160], "found")
+                result.add("oscanner", "Oracle", line, "found")
 
         return result
 
@@ -154,13 +154,13 @@ class S3scanner(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"s3scanner failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"s3scanner failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("found" in line or "public" in line or "exists" in line):
-                result.add("s3scanner", "S3 Bucket", line[:160], "found")
+                result.add("s3scanner", "S3 Bucket", line, "found")
 
         return result
 
@@ -192,13 +192,13 @@ class Sctpscan(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"sctpscan failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"sctpscan failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line:
-                result.add("sctpscan", "SCTP", line[:160], "found")
+                result.add("sctpscan", "SCTP", line, "found")
 
         return result
 
@@ -234,13 +234,13 @@ class SmtpUserEnum(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"smtp-user-enum failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"smtp-user-enum failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("exists" in line or "found" in line or "252" in line):
-                result.add("smtp-user-enum", "User", line[:160], "found")
+                result.add("smtp-user-enum", "User", line, "found")
 
         return result
 
@@ -272,13 +272,13 @@ class Emails2phonenumber(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"emails2phonenumber failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"emails2phonenumber failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("phone" in line or "@" in line or "+" in line):
-                result.add("emails2phonenumber", "Info", line[:160], "found")
+                result.add("emails2phonenumber", "Info", line, "found")
 
         return result
 

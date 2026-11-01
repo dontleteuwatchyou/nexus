@@ -35,13 +35,13 @@ class Svmap(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"svmap failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"svmap failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line:
-                result.add("svmap", "Output", line[:200], "info")
+                result.add("svmap", "Output", line, "info")
 
         return result
 
@@ -73,13 +73,13 @@ class Svwar(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"svwar failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"svwar failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line:
-                result.add("svwar", "Output", line[:200], "info")
+                result.add("svwar", "Output", line, "info")
 
         return result
 
@@ -111,13 +111,13 @@ class Svcrack(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"svcrack failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"svcrack failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line:
-                result.add("svcrack", "Output", line[:200], "info")
+                result.add("svcrack", "Output", line, "info")
 
         return result
 
@@ -149,13 +149,13 @@ class Svreport(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"svreport failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"svreport failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line:
-                result.add("svreport", "Output", line[:200], "info")
+                result.add("svreport", "Output", line, "info")
 
         return result
 

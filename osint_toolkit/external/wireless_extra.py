@@ -84,17 +84,17 @@ class Cowpatty(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"cowpatty failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"cowpatty failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if "cracked" in line.lower() or "key" in line.lower() or "found" in line.lower():
-                result.add("cowpatty", "Key Found", line[:160], "error")
+                result.add("cowpatty", "Key Found", line, "error")
             elif "wpa" in line.lower() or "pmk" in line.lower():
-                result.add("cowpatty", "Progress", line[:160], "warn")
+                result.add("cowpatty", "Progress", line, "warn")
             elif line and not line.startswith("["):
-                result.add("cowpatty", "Output", line[:160], "info")
+                result.add("cowpatty", "Output", line, "info")
 
         return result
 
@@ -138,15 +138,15 @@ class Bully(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"bully failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"bully failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if "pin" in line.lower() or "wps" in line.lower() or "key" in line.lower():
-                result.add("bully", "Result", line[:160], "error" if "key" in line.lower() else "warn")
+                result.add("bully", "Result", line, "error" if "key" in line.lower() else "warn")
             elif line and not line.startswith("["):
-                result.add("bully", "Progress", line[:160], "info")
+                result.add("bully", "Progress", line, "info")
 
         return result
 
@@ -214,15 +214,15 @@ class Pixiewps(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"pixiewps failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"pixiewps failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if "pin" in line.lower() or "wps" in line.lower() or "key" in line.lower():
-                result.add("pixiewps", "Key", line[:160], "error")
+                result.add("pixiewps", "Key", line, "error")
             elif line and not line.startswith("["):
-                result.add("pixiewps", "Result", line[:160], "info")
+                result.add("pixiewps", "Result", line, "info")
 
         return result
 

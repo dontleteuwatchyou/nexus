@@ -42,7 +42,7 @@ class Dalfox(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"dalfox failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"dalfox failed (rc={rc}): {stderr}")
             return result
 
         try:
@@ -51,10 +51,10 @@ class Dalfox(ExternalTool):
                 param = issue.get("parameter", "")
                 payload = issue.get("payload", "")
                 ptype = issue.get("type", "XSS")
-                result.add("dalfox", f"{ptype} in {param}", payload[:160], "error")
+                result.add("dalfox", f"{ptype} in {param}", payload, "error")
         except json.JSONDecodeError:
             for line in stdout.splitlines():
                 if "XSS" in line or "VULN" in line:
-                    result.add("dalfox", "Finding", line[:160], "error")
+                    result.add("dalfox", "Finding", line, "error")
 
         return result

@@ -42,14 +42,14 @@ class AircrackNg(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"aircrack-ng failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"aircrack-ng failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if "KEY FOUND" in line or "FOUND" in line:
-                result.add("aircrack-ng", "Key Found", line[:160], "error")
+                result.add("aircrack-ng", "Key Found", line, "error")
             elif "WPA" in line or "WEP" in line:
-                result.add("aircrack-ng", "Progress", line[:160], "warn")
+                result.add("aircrack-ng", "Progress", line, "warn")
 
         return result
 
@@ -102,11 +102,11 @@ class Wifite(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"wifite failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"wifite failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if "cracked" in line.lower() or "key" in line.lower() or "handshake" in line.lower():
-                result.add("wifite", "Result", line[:160], "warn")
+                result.add("wifite", "Result", line, "warn")
 
         return result

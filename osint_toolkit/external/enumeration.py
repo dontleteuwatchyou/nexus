@@ -35,13 +35,13 @@ class LinEnum(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"linenum failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"linenum failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("sudo" in line or "SUID" in line or "config" in line or "password" in line):
-                result.add("linenum", "Finding", line[:160], "found")
+                result.add("linenum", "Finding", line, "found")
 
         return result
 
@@ -73,13 +73,13 @@ class LinuxSmartEnum(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"linux-smart-enumeration failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"linux-smart-enumeration failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("!" in line or "vulnerable" in line or "misconfig" in line):
-                result.add("linux-smart-enumeration", "Finding", line[:160], "found")
+                result.add("linux-smart-enumeration", "Finding", line, "found")
 
         return result
 
@@ -111,12 +111,12 @@ class ShellNoob(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"shellnoob failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"shellnoob failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line:
-                result.add("shellnoob", "Shellcode", line[:160], "found")
+                result.add("shellnoob", "Shellcode", line, "found")
 
         return result

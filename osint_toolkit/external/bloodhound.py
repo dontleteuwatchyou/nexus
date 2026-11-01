@@ -78,7 +78,7 @@ class BloodHoundPython(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"bloodhound-python failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"bloodhound-python failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -89,6 +89,6 @@ class BloodHoundPython(ExternalTool):
                 elif "error" in line.lower() or "fail" in line.lower():
                     result.add("bloodhound-python", "Error", line, "error")
                 else:
-                    result.add("bloodhound-python", "Progress", line[:160], "info")
+                    result.add("bloodhound-python", "Progress", line, "info")
 
         return result

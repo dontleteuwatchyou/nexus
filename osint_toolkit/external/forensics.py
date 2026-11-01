@@ -57,12 +57,12 @@ class Volatility3(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"volatility3 failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"volatility3 failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines()[:50]:
             if line.strip():
-                result.add("volatility3", plugin, line[:160], "info")
+                result.add("volatility3", plugin, line, "info")
 
         return result
 
@@ -94,7 +94,7 @@ class BulkExtractor(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"bulk_extractor failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"bulk_extractor failed (rc={rc}): {stderr}")
             return result
 
         result.add("bulk_extractor", "Output", "Extracted features to /tmp/bulk_out", "found")
@@ -131,13 +131,13 @@ class Binwalk(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"binwalk failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"binwalk failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if "DECIMAL" in line or "HEXADECIMAL" in line or "DESCRIPTION" in line:
                 continue
             if line.strip() and any(c.isdigit() for c in line[:10]):
-                result.add("binwalk", "Signature", line[:160], "found")
+                result.add("binwalk", "Signature", line, "found")
 
         return result

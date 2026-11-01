@@ -27,11 +27,11 @@ class Massdns(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"massdns failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"massdns failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines()[:100]:
             if "." in line:
-                result.add("massdns", "DNS Record", line[:160], "found")
+                result.add("massdns", "DNS Record", line, "found")
         return result
 
 
@@ -52,12 +52,12 @@ class Dnsrecon(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"dnsrecon failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"dnsrecon failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             if any(k in line for k in ["[+]", "A", "AAAA", "MX", "NS", "CNAME", "SOA", "TXT", "SRV"]):
-                result.add("dnsrecon", "Record", line[:160], "found")
+                result.add("dnsrecon", "Record", line, "found")
         return result
 
 
@@ -78,12 +78,12 @@ class Dnsenum(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"dnsenum failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"dnsenum failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             if any(k in line for k in ["Host:", "Name Server", "Mail Server"]):
-                result.add("dnsenum", line.split(":")[0], line.split(":", 1)[1].strip()[:160], "found")
+                result.add("dnsenum", line.split(":")[0], line.split(":", 1)[1].strip(), "found")
         return result
 
 
@@ -104,12 +104,12 @@ class Fierce(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"fierce failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"fierce failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             if any(k in line for k in ["Found", "Host", "IP", "DNS"]) and line.startswith((" ", "\t")):
-                result.add("fierce", "Finding", line[:160], "found")
+                result.add("fierce", "Finding", line, "found")
         return result
 
 
@@ -144,11 +144,11 @@ class Nbtscan(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"nbtscan failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"nbtscan failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             if line.strip() and "<unknown>" not in line:
-                result.add("nbtscan", "NetBIOS", line[:160], "found")
+                result.add("nbtscan", "NetBIOS", line, "found")
         return result
 
 
@@ -171,11 +171,11 @@ class Onesixone(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"onesixtyone failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"onesixtyone failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             if "[" in line and "]" in line:
-                result.add("onesixtyone", "SNMP", line[:160], "warn")
+                result.add("onesixtyone", "SNMP", line, "warn")
         return result
 
 
@@ -198,11 +198,11 @@ class Braa(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"braa failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"braa failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             if line.strip() and ":" in line:
-                result.add("braa", "SNMP OID", line[:160], "found")
+                result.add("braa", "SNMP OID", line, "found")
         return result
 
 
@@ -223,11 +223,11 @@ class Snmpcheck(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"snmpcheck failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"snmpcheck failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             if line.strip() and ":" in line:
-                result.add("snmpcheck", "Info", line[:160], "found")
+                result.add("snmpcheck", "Info", line, "found")
         return result
 
 
@@ -249,7 +249,7 @@ class Fping(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
         for line in stdout.splitlines():
             if line.strip():
-                result.add("fping", "Alive", line[:160], "found")
+                result.add("fping", "Alive", line, "found")
         return result
 
 
@@ -270,9 +270,9 @@ class Ikescan(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"ike-scan failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"ike-scan failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             if "SA" in line or "Vendor" in line or "transform" in line:
-                result.add("ike-scan", "ISAKMP", line[:160], "found")
+                result.add("ike-scan", "ISAKMP", line, "found")
         return result

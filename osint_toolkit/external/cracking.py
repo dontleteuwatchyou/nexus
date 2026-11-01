@@ -38,7 +38,7 @@ class Hashcat(ExternalTool):
 
         for line in stdout.splitlines():
             if ":" in line and len(line) > 10:
-                result.add("hashcat", "Cracked", line[:160], "error")
+                result.add("hashcat", "Cracked", line, "error")
 
         result.add("hashcat", "Status", f"Hashcat completed (rc={rc})", "info")
         return result
@@ -77,7 +77,7 @@ class John(ExternalTool):
 
         for line in stdout.splitlines():
             if "(" in line and ")" in line and ":" in line:
-                result.add("john", "Cracked", line[:160], "error")
+                result.add("john", "Cracked", line, "error")
 
         result.add("john", "Status", f"John completed (rc={rc})", "info")
         return result
@@ -112,7 +112,7 @@ class Fcrackzip(ExternalTool):
 
         for line in stdout.splitlines():
             if "PASSWORD" in line or "password" in line:
-                result.add("fcrackzip", "Password", line[:160], "error")
+                result.add("fcrackzip", "Password", line, "error")
 
         return result
 
@@ -149,6 +149,6 @@ class Crunch(ExternalTool):
         if rc == 0:
             result.add("crunch", "Output", "Wordlist generated at /tmp/crunch_wordlist.txt", "found")
         else:
-            result.errors.append(f"crunch failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"crunch failed (rc={rc}): {stderr}")
 
         return result

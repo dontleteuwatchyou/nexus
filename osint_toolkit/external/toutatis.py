@@ -54,7 +54,7 @@ class Toutatis(ExternalTool):
         result.raw["stderr"] = stderr[:4000]
 
         if rc != 0 and not stdout.strip().startswith("{"):
-            result.errors.append(f"toutatis failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"toutatis failed (rc={rc}): {stderr}")
             return result
 
         # Try to parse JSON
@@ -62,7 +62,7 @@ class Toutatis(ExternalTool):
             data = json.loads(stdout)
         except json.JSONDecodeError:
             # Fall back to scraping the textual output
-            result.add("output", "Raw", stdout[:200], "info")
+            result.add("output", "Raw", stdout, "info")
             return result
 
         result.raw["data"] = data
@@ -75,7 +75,7 @@ class Toutatis(ExternalTool):
         if user.get("full_name"):
             result.add("profile", "Full name", user["full_name"], "warn")
         if user.get("biography"):
-            result.add("profile", "Bio", user["biography"][:160], "info")
+            result.add("profile", "Bio", user["biography"], "info")
         if user.get("external_url"):
             result.add("profile", "External URL", user["external_url"], "info",
                        url=user["external_url"])

@@ -50,7 +50,7 @@ def parse_nmap(stdout: str) -> list[dict]:
             sev = "high" if "vulnerable" in low else "medium"
             out.append({"kind": "script", "severity": sev,
                         "label": "nmap script",
-                        "detail": line.lstrip("|_ ").strip()[:200]})
+                        "detail": line.lstrip("|_ ").strip()})
     return out
 
 
@@ -97,7 +97,7 @@ class Nmap(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"nmap failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"nmap failed (rc={rc}): {stderr}")
             return result
 
         for item in parse_nmap(stdout):
@@ -145,7 +145,7 @@ class Masscan(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"masscan failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"masscan failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():

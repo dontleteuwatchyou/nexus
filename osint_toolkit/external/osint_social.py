@@ -49,7 +49,7 @@ class Sherlock(ExternalTool):
                 pass
 
         if rc != 0 and not stdout.strip() and not os.path.exists("/tmp/sherlock_out.json"):
-            result.errors.append(f"sherlock failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"sherlock failed (rc={rc}): {stderr}")
             return result
 
         result.add("sherlock", "Summary", "Check /tmp/sherlock_out.json for full results", "info")
@@ -89,9 +89,9 @@ class Holehe(ExternalTool):
                 continue
             clean = re.sub(r"\x1b\[[0-9;]*m", "", line)
             if "[+]" in clean:
-                result.add("holehe", "Registered", clean.replace("[+]", "").strip()[:160], "warn")
+                result.add("holehe", "Registered", clean.replace("[+]", "").strip(), "warn")
             elif "[-]" in clean:
-                result.add("holehe", "Not Registered", clean.replace("[-]", "").strip()[:160], "info")
+                result.add("holehe", "Not Registered", clean.replace("[-]", "").strip(), "info")
 
         return result
 
@@ -131,14 +131,14 @@ class TheHarvester(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"theHarvester failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"theHarvester failed (rc={rc}): {stderr}")
             return result
 
         # Parse output
         for line in stdout.splitlines():
             line = line.strip()
             if any(k in line for k in ["Host:", "IP:", "Email:", "User:", "Subdomain:", "Vhost:"]):
-                result.add("theHarvester", line.split(":")[0], line.split(":", 1)[1].strip()[:160], "found")
+                result.add("theHarvester", line.split(":")[0], line.split(":", 1)[1].strip(), "found")
 
         result.add("theHarvester", "Summary", "Check /tmp/theHarvester_out.html for full results", "info")
         return result
@@ -202,12 +202,12 @@ class Photon(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"photon failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"photon failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if line.strip() and not line.startswith("["):
-                result.add("photon", "URL", line.strip()[:160], "found")
+                result.add("photon", "URL", line.strip(), "found")
 
         result.add("photon", "Summary", "Check /tmp/photon_out for full results", "info")
         return result
@@ -240,14 +240,14 @@ class FinalRecon(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"finalrecon failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"finalrecon failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if any(k in line for k in ["[INFO]", "[+]", "[!]", "HTTP", "Title", "IP", "Server", "Technology", "WAF", "SSL"]):
                 sev = "warn" if "[!]" in line else "found"
-                result.add("finalrecon", "Finding", line[:160], sev)
+                result.add("finalrecon", "Finding", line, sev)
 
         return result
 
@@ -279,7 +279,7 @@ class Arjun(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"arjun failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"arjun failed (rc={rc}): {stderr}")
             return result
 
         import os

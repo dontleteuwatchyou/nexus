@@ -33,7 +33,7 @@ class Wafw00f(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"wafw00f failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"wafw00f failed (rc={rc}): {stderr}")
             return result
 
         try:
@@ -74,7 +74,7 @@ class WhatWeb(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"whatweb failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"whatweb failed (rc={rc}): {stderr}")
             return result
 
         if os.path.exists("/tmp/whatweb.json"):
@@ -138,7 +138,7 @@ class WFuzz(ExternalTool):
 
         if rc != 0 and not stdout.strip():
             if clean_stderr:
-                result.errors.append(f"wfuzz failed (rc={rc}): {clean_stderr[:200]}")
+                result.errors.append(f"wfuzz failed (rc={rc}): {clean_stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -150,7 +150,7 @@ class WFuzz(ExternalTool):
                     payload = parts[-1] if parts else ""
                     if code and payload:
                         sev = "warn" if code.startswith("2") else "found"
-                        result.add("wfuzz", f"HTTP {code}", payload[:160], sev)
+                        result.add("wfuzz", f"HTTP {code}", payload, sev)
 
         return result
 
@@ -190,15 +190,15 @@ class Davtest(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"davtest failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"davtest failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if "SUCCEED" in line or "succeed" in line.lower():
-                result.add("davtest", "WebDAV", line[:160], "warn")
+                result.add("davtest", "WebDAV", line, "warn")
             elif "FAIL" in line or "fail" in line.lower():
-                result.add("davtest", "WebDAV", line[:160], "info")
+                result.add("davtest", "WebDAV", line, "info")
 
         return result
 
@@ -238,15 +238,15 @@ class Commix(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"commix failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"commix failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if "vulnerable" in line.lower() or "injection" in line.lower():
-                result.add("commix", "Command Injection", line[:160], "error")
+                result.add("commix", "Command Injection", line, "error")
             elif "[+]" in line and "info" in line.lower():
-                result.add("commix", "Info", line[:160], "found")
+                result.add("commix", "Info", line, "found")
 
         return result
 
@@ -286,13 +286,13 @@ class Slowhttptest(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"slowhttptest failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"slowhttptest failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if "slow" in line.lower() or "timeout" in line.lower() or "connections" in line.lower():
-                result.add("slowhttptest", "DoS Test", line[:160], "warn")
+                result.add("slowhttptest", "DoS Test", line, "warn")
 
         result.add("slowhttptest", "Note", "Slow HTTP DoS test completed. Review output above for server behavior.", "info")
 
@@ -320,13 +320,13 @@ class Siege(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"siege failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"siege failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if "Availability" in line or "Elapsed" in line or "Transaction" in line or "Resp" in line:
-                result.add("siege", "Load Test", line[:160], "found")
+                result.add("siege", "Load Test", line, "found")
 
         return result
 
@@ -352,14 +352,14 @@ class Joomscan(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"joomscan failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"joomscan failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if "[+]" in line or "[!]" in line or "[*]" in line:
                 sev = "warn" if "[!]" in line else "found"
-                result.add("joomscan", "Joomla", line[:160], sev)
+                result.add("joomscan", "Joomla", line, sev)
 
         return result
 
@@ -386,15 +386,15 @@ class Subjack(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"subjack failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"subjack failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and "is vulnerable" in line.lower() or "vulnerable" in line.lower():
-                result.add("subjack", "Takeover", line[:160], "error")
+                result.add("subjack", "Takeover", line, "error")
             elif line and "not vulnerable" in line.lower():
-                result.add("subjack", "Not Vulnerable", line[:160], "info")
+                result.add("subjack", "Not Vulnerable", line, "info")
 
         return result
 
@@ -420,14 +420,14 @@ class Sublist3r(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"sublist3r failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"sublist3r failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and not line.startswith("[-]") and not line.startswith("[!]") and not line.startswith("[*]"):
                 if "." in line and target.replace(".", "") in line.replace(".", ""):
-                    result.add("sublist3r", "Subdomain", line[:160], "found")
+                    result.add("sublist3r", "Subdomain", line, "found")
 
         return result
 
@@ -455,11 +455,11 @@ class SpiderFoot(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"spiderfoot failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"spiderfoot failed (rc={rc}): {stderr}")
             return result
 
         # Parse JSON lines output
-        for line in stdout.splitlines()[:200]:
+        for line in stdout.splitlines():
             line = line.strip()
             if not line:
                 continue
@@ -469,11 +469,11 @@ class SpiderFoot(ExternalTool):
                 data = item.get("data", "")
                 module = item.get("module", "spiderfoot")
                 if data:
-                    result.add("spiderfoot", f"{module}:{event_type}", str(data)[:160], "found")
+                    result.add("spiderfoot", f"{module}:{event_type}", str(data), "found")
             except (json.JSONDecodeError, TypeError):
                 # Fallback: raw line
                 if "|" in line or "[+]" in line:
-                    result.add("spiderfoot", "OSINT", line[:160], "found")
+                    result.add("spiderfoot", "OSINT", line, "found")
 
         return result
 
@@ -499,13 +499,13 @@ class WCVS(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"wcvs failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"wcvs failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("vuln" in line.lower() or "cve" in line.lower() or "warning" in line.lower()):
-                result.add("wcvs", "Vulnerability", line[:160], "warn")
+                result.add("wcvs", "Vulnerability", line, "warn")
 
         return result
 
@@ -531,12 +531,12 @@ class Raven(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"raven failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"raven failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("[" in line or "]" in line):
-                result.add("raven", "Recon", line[:160], "found")
+                result.add("raven", "Recon", line, "found")
 
         return result

@@ -51,7 +51,7 @@ class CrackMapExec(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"crackmapexec failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"crackmapexec failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -61,7 +61,7 @@ class CrackMapExec(ExternalTool):
             low = line.lower()
             if any(k in low for k in ["share", "session", "user", "group", "disk", "policy", "password", "admin", "pwd", "hash"]):
                 sev = "warn" if any(k in low for k in ["admin", "pwd", "hash", "password"]) else "found"
-                result.add("crackmapexec", protocol.upper(), line[:160], sev)
+                result.add("crackmapexec", protocol.upper(), line, sev)
 
         return result
 
@@ -109,7 +109,7 @@ class NetExec(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"netexec failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"netexec failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -119,6 +119,6 @@ class NetExec(ExternalTool):
             low = line.lower()
             if any(k in low for k in ["share", "session", "user", "group", "disk", "policy", "password", "admin", "pwd", "hash", "rid"]):
                 sev = "warn" if any(k in low for k in ["admin", "pwd", "hash", "password", "rid"]) else "found"
-                result.add("netexec", protocol.upper(), line[:160], sev)
+                result.add("netexec", protocol.upper(), line, sev)
 
         return result

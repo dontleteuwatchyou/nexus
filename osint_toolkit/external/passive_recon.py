@@ -51,7 +51,7 @@ class Sslyze(ExternalTool):
         result.raw["stdout"] = stdout[:50000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"sslyze failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"sslyze failed (rc={rc}): {stderr}")
             return result
         try:
             with open(tmp.name) as f:
@@ -68,7 +68,7 @@ class Sslyze(ExternalTool):
             for line in stdout.splitlines():
                 line = line.strip()
                 if any(k in line for k in ["TLS", "certificate", "cipher"]):
-                    result.add("sslyze", "SSL", line[:160], "found")
+                    result.add("sslyze", "SSL", line, "found")
         try:
             os.unlink(tmp.name)
         except Exception:
@@ -93,13 +93,13 @@ class Sslscan(ExternalTool):
         result.raw["stdout"] = stdout[:50000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"sslscan failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"sslscan failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             if "accepted" in line.lower() or "rejected" in line.lower() or "vulnerable" in line.lower():
                 sev = "error" if "rejected" in line.lower() else "found"
-                result.add("sslscan", "Cipher", line[:160], sev)
+                result.add("sslscan", "Cipher", line, sev)
         return result
 
 
@@ -194,7 +194,7 @@ class Tshark(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
         for line in stdout.splitlines()[:50]:
             if line.strip():
-                result.add("tshark", "Packet", line[:160], "found")
+                result.add("tshark", "Packet", line, "found")
         return result
 
 

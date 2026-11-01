@@ -36,7 +36,7 @@ class Cewl(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"cewl failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"cewl failed (rc={rc}): {stderr}")
             return result
 
         import os
@@ -51,7 +51,7 @@ class Cewl(ExternalTool):
         for line in stdout.splitlines():
             line = line.strip()
             if line and not line.startswith("[") and ":" in line:
-                result.add("cewl", "Word", line[:160], "info")
+                result.add("cewl", "Word", line, "info")
 
         result.add("cewl", "Output", "/tmp/cewl_out.txt", "info")
         return result
@@ -90,14 +90,14 @@ class Metagoofil(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"metagoofil failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"metagoofil failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if any(k in line for k in ("[+]", "File:", "Author:", "Title:", "Creator:")):
                 sev = "found" if "[+]" in line else "info"
-                result.add("metagoofil", "Metadata", line[:160], sev)
+                result.add("metagoofil", "Metadata", line, sev)
 
         result.add("metagoofil", "Output", "/tmp/metagoofil_out", "info")
         return result
@@ -130,7 +130,7 @@ class Exiftool(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"exiftool failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"exiftool failed (rc={rc}): {stderr}")
             return result
 
         try:
@@ -139,16 +139,16 @@ class Exiftool(ExternalTool):
                 for entry in data:
                     for key, value in entry.items():
                         if value and str(value).strip():
-                            result.add("exiftool", key, str(value)[:160], "found")
+                            result.add("exiftool", key, str(value), "found")
             elif isinstance(data, dict):
                 for key, value in data.items():
                     if value and str(value).strip():
-                        result.add("exiftool", key, str(value)[:160], "found")
+                        result.add("exiftool", key, str(value), "found")
         except json.JSONDecodeError:
             for line in stdout.splitlines():
                 line = line.strip()
                 if line and ":" in line:
-                    result.add("exiftool", "Raw", line[:160], "info")
+                    result.add("exiftool", "Raw", line, "info")
 
         return result
 
@@ -201,7 +201,7 @@ class Dmitry(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"dmitry failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"dmitry failed (rc={rc}): {stderr}")
             return result
 
         import os
@@ -213,16 +213,16 @@ class Dmitry(ExternalTool):
                         if not line:
                             continue
                         if any(k in line for k in ("Hostname:", "IP:", "Domain:", "Email:", "Whois:", "BGP:")):
-                            result.add("dmitry", line.split(":")[0], line.split(":", 1)[1].strip()[:160], "found")
+                            result.add("dmitry", line.split(":")[0], line.split(":", 1)[1].strip(), "found")
                         elif line and not line.startswith("#") and not line.startswith("--"):
-                            result.add("dmitry", "Info", line[:160], "info")
+                            result.add("dmitry", "Info", line, "info")
             except Exception:
                 pass
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ":" in line and not line.startswith("["):
-                result.add("dmitry", "Finding", line[:160], "info")
+                result.add("dmitry", "Finding", line, "info")
 
         return result
 
@@ -254,7 +254,7 @@ class Linkedin2username(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"linkedin2username failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"linkedin2username failed (rc={rc}): {stderr}")
             return result
 
         import os
@@ -271,7 +271,7 @@ class Linkedin2username(ExternalTool):
         for line in stdout.splitlines():
             line = line.strip()
             if line and not line.startswith("[") and not line.startswith("("):
-                result.add("linkedin2username", "Output", line[:160], "info")
+                result.add("linkedin2username", "Output", line, "info")
 
         return result
 
@@ -303,7 +303,7 @@ class Pompem(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"pompem failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"pompem failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -312,9 +312,9 @@ class Pompem(ExternalTool):
                 continue
             if any(k in line for k in ("[+]", "Exploit:", "CVE", "EDB-ID", "Title:", "Description:")):
                 sev = "error" if "CVE" in line or "Exploit" in line else "found"
-                result.add("pompem", "Exploit", line[:160], sev)
+                result.add("pompem", "Exploit", line, sev)
             elif line and not line.startswith("["):
-                result.add("pompem", "Result", line[:160], "info")
+                result.add("pompem", "Result", line, "info")
 
         result.add("pompem", "Output", "/tmp/pompem_out.txt", "info")
         return result

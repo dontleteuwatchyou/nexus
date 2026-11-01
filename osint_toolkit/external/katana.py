@@ -46,7 +46,7 @@ class Katana(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"katana failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"katana failed (rc={rc}): {stderr}")
             return result
 
         urls = set()

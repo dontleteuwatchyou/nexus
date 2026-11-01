@@ -38,13 +38,13 @@ class Scalpel(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"scalpel failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"scalpel failed (rc={rc}): {stderr}")
             return result
 
         result.add("scalpel", "Output", "Carved files written to /tmp/scalpel_out", "found")
         for line in stdout.splitlines():
             if "Carved" in line or "files" in line.lower():
-                result.add("scalpel", "Summary", line[:160], "info")
+                result.add("scalpel", "Summary", line, "info")
 
         return result
 
@@ -76,13 +76,13 @@ class Foremost(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"foremost failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"foremost failed (rc={rc}): {stderr}")
             return result
 
         result.add("foremost", "Output", "Carved files written to /tmp/foremost_out", "found")
         for line in stdout.splitlines():
             if line.strip() and ("FILES" in line or ":" in line):
-                result.add("foremost", "Result", line[:160], "info")
+                result.add("foremost", "Result", line, "info")
 
         return result
 
@@ -261,12 +261,12 @@ class Pasco(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"pasco failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"pasco failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines()[:100]:
             if line.strip():
-                result.add("pasco", "Cache entry", line[:200], "info")
+                result.add("pasco", "Cache entry", line, "info")
 
         return result
 
@@ -298,12 +298,12 @@ class Rifiuti(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"rifiuti failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"rifiuti failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines()[:100]:
             if line.strip():
-                result.add("rifiuti", "Recycle bin entry", line[:200], "info")
+                result.add("rifiuti", "Recycle bin entry", line, "info")
 
         return result
 
@@ -335,13 +335,13 @@ class Reglookup(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"reglookup failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"reglookup failed (rc={rc}): {stderr}")
             return result
 
         result.add("reglookup", "Output", "Registry parsed to /tmp/reg_out.txt", "found")
         for line in stdout.splitlines()[:50]:
             if line.strip():
-                result.add("reglookup", "Key", line[:200], "info")
+                result.add("reglookup", "Key", line, "info")
 
         return result
 
@@ -394,13 +394,13 @@ class Vinetto(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"vinetto failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"vinetto failed (rc={rc}): {stderr}")
             return result
 
         result.add("vinetto", "Output", "Thumbs.db data extracted to /tmp/vinetto_out", "found")
         for line in stdout.splitlines()[:50]:
             if line.strip():
-                result.add("vinetto", "Entry", line[:160], "info")
+                result.add("vinetto", "Entry", line, "info")
 
         return result
 
@@ -495,12 +495,12 @@ class Pdfid(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"pdfid failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"pdfid failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if "PDF Header" in line or "obj" in line or "stream" in line:
-                result.add("pdfid", "Indicator", line[:160], "found")
+                result.add("pdfid", "Indicator", line, "found")
 
         return result
 
@@ -532,11 +532,11 @@ class PdfParser(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"pdf-parser failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"pdf-parser failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines()[:100]:
             if line.strip():
-                result.add("pdf-parser", "Object", line[:200], "info")
+                result.add("pdf-parser", "Object", line, "info")
 
         return result

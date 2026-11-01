@@ -58,14 +58,14 @@ class HashIdentifier(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"hash-identifier failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"hash-identifier failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             stripped = line.strip()
             if not stripped:
                 continue
-            result.add("hash-identifier", "Hash type", stripped[:200], "found")
+            result.add("hash-identifier", "Hash type", stripped, "found")
 
         return result
 
@@ -97,14 +97,14 @@ class PskCrack(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"psk-crack failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"psk-crack failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             stripped = line.strip()
             if not stripped:
                 continue
-            result.add("psk-crack", "Result", stripped[:200], "info")
+            result.add("psk-crack", "Result", stripped, "info")
 
         return result
 
@@ -157,14 +157,14 @@ class THCPptpBruter(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"thc-pptp-bruter failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"thc-pptp-bruter failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             stripped = line.strip()
             if not stripped:
                 continue
-            result.add("thc-pptp-bruter", "Result", stripped[:200], "info")
+            result.add("thc-pptp-bruter", "Result", stripped, "info")
 
         return result
 
@@ -217,14 +217,14 @@ class PoleNum(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"polenum failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"polenum failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             stripped = line.strip()
             if not stripped:
                 continue
-            result.add("polenum", "Policy", stripped[:200], "info")
+            result.add("polenum", "Policy", stripped, "info")
 
         return result
 

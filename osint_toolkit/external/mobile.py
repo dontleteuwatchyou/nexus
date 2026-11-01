@@ -85,7 +85,7 @@ class JADX(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"jadx failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"jadx failed (rc={rc}): {stderr}")
             return result
 
         result.add("jadx", "Output", "Decompiled to /tmp/jadx_out", "found")
@@ -119,7 +119,7 @@ class APKTool(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"apktool failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"apktool failed (rc={rc}): {stderr}")
             return result
 
         result.add("apktool", "Output", "Decoded to /tmp/apktool_out", "found")

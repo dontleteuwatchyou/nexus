@@ -58,6 +58,6 @@ class Amass(ExternalTool):
             os.remove(json_file)
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"amass failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"amass failed (rc={rc}): {stderr}")
 
         return result

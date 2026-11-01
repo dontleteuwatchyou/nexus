@@ -35,14 +35,14 @@ class Enum4linux(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"enum4linux failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"enum4linux failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if any(k in line for k in ["[+]", "User:", "Group:", "Share:", "Password:", "Policy:", "Domain:"]):
                 sev = "warn" if "Password" in line else "found"
-                result.add("enum4linux", "Finding", line[:160], sev)
+                result.add("enum4linux", "Finding", line, sev)
 
         return result
 
@@ -86,7 +86,7 @@ class Enum4linuxNG(ExternalTool):
                 pass
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"enum4linux-ng failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"enum4linux-ng failed (rc={rc}): {stderr}")
 
         return result
 
@@ -126,12 +126,12 @@ class LdapDomainDump(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"ldapdomaindump failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"ldapdomaindump failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if "written" in line.lower() or "dumped" in line.lower():
-                result.add("ldapdomaindump", "Output", line[:160], "found")
+                result.add("ldapdomaindump", "Output", line, "found")
 
         return result
 
@@ -171,12 +171,12 @@ class Kerbrute(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"kerbrute failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"kerbrute failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if "VALID USERNAME" in line or "valid" in line.lower():
-                result.add("kerbrute", "Valid User", line[:160], "warn")
+                result.add("kerbrute", "Valid User", line, "warn")
 
         return result

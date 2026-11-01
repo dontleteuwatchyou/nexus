@@ -36,7 +36,7 @@ class Prowler(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"prowler failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"prowler failed (rc={rc}): {stderr}")
             return result
 
         result.add("prowler", "Status", "Scan completed. Check /tmp/prowler_out for detailed results.", "found")

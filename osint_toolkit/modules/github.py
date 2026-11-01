@@ -180,7 +180,7 @@ async def scan(username: str, *, timeout: float = 25.0) -> ScanResult:
         tw = profile["twitter_username"]
         result.add("profile", "Twitter", tw, "warn", url=f"https://x.com/{tw}")
     if profile.get("bio"):
-        result.add("profile", "Bio", profile["bio"][:160], "info")
+        result.add("profile", "Bio", profile["bio"], "info")
     if profile.get("hireable"):
         result.add("profile", "Hireable", "Yes", "info")
     result.add("profile", "Public repos",
@@ -252,7 +252,7 @@ async def scan(username: str, *, timeout: float = 25.0) -> ScanResult:
             parts = k.split()
             if len(parts) >= 2:
                 ktype = parts[0]
-                fingerprint = parts[1][:30] + "..."
+                fingerprint = parts[1]
                 result.add("keys", ktype, fingerprint, "info")
     if gpg:
         result.raw["gpg_keys"] = True

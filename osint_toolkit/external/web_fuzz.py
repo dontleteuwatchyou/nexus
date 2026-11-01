@@ -40,7 +40,7 @@ class Dirb(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"dirb failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"dirb failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -50,7 +50,7 @@ class Dirb(ExternalTool):
             if stripped.startswith("==>"):
                 result.add("dirb", "Discovered", stripped[3:].strip(), "found")
             elif "+" in stripped and "CODE:" in stripped:
-                result.add("dirb", "Path", stripped[:200], "info")
+                result.add("dirb", "Path", stripped, "info")
 
         return result
 
@@ -88,7 +88,7 @@ class Dirsearch(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"dirsearch failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"dirsearch failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -96,7 +96,7 @@ class Dirsearch(ExternalTool):
             if not stripped:
                 continue
             if "[" in stripped and ("]" in stripped):
-                result.add("dirsearch", "Result", stripped[:200], "info")
+                result.add("dirsearch", "Result", stripped, "info")
 
         return result
 
@@ -128,7 +128,7 @@ class Trufflehog(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"trufflehog failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"trufflehog failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -136,9 +136,9 @@ class Trufflehog(ExternalTool):
             if not stripped:
                 continue
             if "Detected" in stripped or "Secret" in stripped:
-                result.add("trufflehog", "Secret", stripped[:200], "found")
+                result.add("trufflehog", "Secret", stripped, "found")
             else:
-                result.add("trufflehog", "Result", stripped[:200], "info")
+                result.add("trufflehog", "Result", stripped, "info")
 
         return result
 
@@ -170,7 +170,7 @@ class Gitleaks(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"gitleaks failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"gitleaks failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -178,8 +178,8 @@ class Gitleaks(ExternalTool):
             if not stripped:
                 continue
             if "leak" in stripped.lower() or "secret" in stripped.lower():
-                result.add("gitleaks", "Leak", stripped[:200], "found")
+                result.add("gitleaks", "Leak", stripped, "found")
             else:
-                result.add("gitleaks", "Result", stripped[:200], "info")
+                result.add("gitleaks", "Result", stripped, "info")
 
         return result

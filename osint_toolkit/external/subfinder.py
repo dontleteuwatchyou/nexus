@@ -38,7 +38,7 @@ class Subfinder(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"subfinder failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"subfinder failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():

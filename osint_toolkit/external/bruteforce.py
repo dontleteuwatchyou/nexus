@@ -28,7 +28,7 @@ class Hydra(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"hydra failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"hydra failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
@@ -58,11 +58,11 @@ class Medusa(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"medusa failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"medusa failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             if "ACCOUNT FOUND" in line or "SUCCESS" in line:
-                result.add("medusa", "Credential", line[:160], "error")
+                result.add("medusa", "Credential", line, "error")
         return result
 
 
@@ -85,11 +85,11 @@ class Ncrack(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"ncrack failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"ncrack failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             if "password" in line.lower() and ":" in line:
-                result.add("ncrack", "Credential", line[:160], "error")
+                result.add("ncrack", "Credential", line, "error")
         return result
 
 
@@ -113,11 +113,11 @@ class Crowbar(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"crowbar failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"crowbar failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             if "found" in line.lower() or "success" in line.lower():
-                result.add("crowbar", "Credential", line[:160], "error")
+                result.add("crowbar", "Credential", line, "error")
         return result
 
 
@@ -140,5 +140,5 @@ class Patator(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"patator failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"patator failed (rc={rc}): {stderr}")
         return result

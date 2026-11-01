@@ -54,14 +54,14 @@ class Metasploit(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"msfconsole failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"msfconsole failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if any(k in line for k in ["[+]", "[*]", "RHOST", "PORT", "INFO", "VULNERABLE", "OPEN"]):
                 sev = "error" if "[+]" in line else ("warn" if "VULNERABLE" in line else "found")
-                result.add("metasploit", line.split("]")[0] + "]", line.split("]")[-1].strip()[:160], sev)
+                result.add("metasploit", line.split("]")[0] + "]", line.split("]")[-1].strip(), sev)
 
         return result
 
@@ -112,7 +112,7 @@ class MsfVenom(ExternalTool):
         if rc == 0:
             result.add("msfvenom", "Payload", f"Generated {out_path}", "found")
         else:
-            result.errors.append(f"msfvenom failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"msfvenom failed (rc={rc}): {stderr}")
 
         return result
 

@@ -56,12 +56,12 @@ class Samdump2(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"samdump2 failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"samdump2 failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if line.strip() and ":" in line:
-                result.add("samdump2", "Hash", line[:200], "found")
+                result.add("samdump2", "Hash", line, "found")
 
         return result
 
@@ -93,13 +93,13 @@ class Smbmap(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"smbmap failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"smbmap failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if "Disk" in line or "Perms" in line or "READ" in line or "WRITE" in line:
-                result.add("smbmap", "Share", line[:200], "found")
+                result.add("smbmap", "Share", line, "found")
             elif line.strip() and ":" in line:
-                result.add("smbmap", "Entry", line[:200], "info")
+                result.add("smbmap", "Entry", line, "info")
 
         return result

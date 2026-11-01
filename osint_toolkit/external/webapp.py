@@ -109,7 +109,7 @@ class Nikto(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"nikto failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"nikto failed (rc={rc}): {stderr}")
             return result
 
         import os
@@ -118,7 +118,7 @@ class Nikto(ExternalTool):
                 with open("/tmp/nikto_out.json") as f:
                     data = json.load(f)
                     for vuln in data.get("vulnerabilities", [])[:30]:
-                        result.add("nikto", f"OSVDB-{vuln.get('OSVDB', '?')}", vuln.get("msg", "")[:160], "warn")
+                        result.add("nikto", f"OSVDB-{vuln.get('OSVDB', '?')}", vuln.get("msg", ""), "warn")
             except Exception:
                 pass
 
@@ -152,7 +152,7 @@ class Wapiti(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"wapiti failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"wapiti failed (rc={rc}): {stderr}")
             return result
 
         import os
@@ -161,7 +161,7 @@ class Wapiti(ExternalTool):
                 with open("/tmp/wapiti_out.json") as f:
                     data = json.load(f)
                     for vuln in data.get("vulnerabilities", [])[:30]:
-                        result.add("wapiti", vuln.get("name", "Vuln"), vuln.get("description", "")[:160], "warn")
+                        result.add("wapiti", vuln.get("name", "Vuln"), vuln.get("description", ""), "warn")
             except Exception:
                 pass
 

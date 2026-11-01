@@ -50,7 +50,7 @@ class FFUF(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"ffuf failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"ffuf failed (rc={rc}): {stderr}")
             return result
 
         try:

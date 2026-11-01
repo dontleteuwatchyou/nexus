@@ -49,13 +49,13 @@ class SQLMap(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"sqlmap failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"sqlmap failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if any(k in line.lower() for k in ["injectable", "vulnerable", "parameter:", "type:", "payload:", "dbms:"]):
                 sev = "error" if "injectable" in line.lower() else "warn"
-                result.add("sqlmap", "Finding", line[:160], sev)
+                result.add("sqlmap", "Finding", line, sev)
 
         return result

@@ -1121,7 +1121,7 @@ class OsintApp(App):
                         f"\n\n[#737373]... tronque ({len(lines)} lignes)[/]"
                     )
 
-            is_refusal = bool(RE_REFUSAL.search(response[:200]))
+            is_refusal = bool(RE_REFUSAL.search(response))
             if is_refusal:
                 response = "[dim]Assistant non disponible[/dim]"
 
@@ -1300,7 +1300,7 @@ class OsintApp(App):
                 color = SEVERITY_STYLES.get(f.severity, "#e5e5e5")
                 value = str(f.value)
                 if len(value) > 110:
-                    value = value[:107] + "..."
+                    value = value
                 value = escape(value)
                 label = escape(str(f.label))
                 lines.append(
@@ -1392,7 +1392,7 @@ class OsintApp(App):
                 for f in findings:
                     value = str(f.value)
                     if len(value) > 200:
-                        value = value[:197] + "..."
+                        value = value
                     lines.append(f"    {f.label:<24}  {value}")
                 lines.append("")
             if result.errors:

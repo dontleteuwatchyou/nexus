@@ -85,15 +85,15 @@ class Proxychains(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"proxychains failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"proxychains failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if "open" in line and "port" not in line.lower():
-                result.add("proxychains", "Open Port", line[:160], "warn")
+                result.add("proxychains", "Open Port", line, "warn")
             elif "Nmap done" in line or "Interesting ports" in line:
-                result.add("proxychains", "Scan", line[:160], "found")
+                result.add("proxychains", "Scan", line, "found")
 
         return result
 

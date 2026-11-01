@@ -36,13 +36,13 @@ class Ssldump(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"ssldump failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"ssldump failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("Certificate" in line or "Handshake" in line or "alert" in line):
-                result.add("ssldump", "SSL", line[:160], "found")
+                result.add("ssldump", "SSL", line, "found")
 
         return result
 
@@ -137,13 +137,13 @@ class Certipy(ExternalTool):
         result.raw["stderr"] = stderr[:3000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"certipy failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"certipy failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("CA" in line or "Certificate" in line or "Template" in line or "vulnerable" in line):
-                result.add("certipy", "AD CS", line[:160], "found")
+                result.add("certipy", "AD CS", line, "found")
 
         return result
 

@@ -25,7 +25,7 @@ class ArpScan(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"arp-scan failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"arp-scan failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
@@ -165,12 +165,12 @@ class Dnschef(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"dnschef failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"dnschef failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             if line:
-                result.add("dnschef", "Output", line[:160], "info")
+                result.add("dnschef", "Output", line, "info")
         return result
 
 
@@ -191,12 +191,12 @@ class Dnstracer(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"dnstracer failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"dnstracer failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             if line:
-                result.add("dnstracer", "Hop", line[:160], "found")
+                result.add("dnstracer", "Hop", line, "found")
         return result
 
 
@@ -217,12 +217,12 @@ class Dnsmap(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"dnsmap failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"dnsmap failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("IP" in line or ":" in line):
-                result.add("dnsmap", "Record", line[:160], "found")
+                result.add("dnsmap", "Record", line, "found")
         return result
 
 
@@ -243,14 +243,14 @@ class Dnswalk(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"dnswalk failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"dnswalk failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             if line and "FAIL" in line:
-                result.add("dnswalk", "Warning", line[:160], "warn")
+                result.add("dnswalk", "Warning", line, "warn")
             elif line:
-                result.add("dnswalk", "Record", line[:160], "info")
+                result.add("dnswalk", "Record", line, "info")
         return result
 
 
@@ -299,12 +299,12 @@ class Nping(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"nping failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"nping failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("RTT" in line or "max" in line or "rcvd" in line or "SENT" in line or "RCVD" in line):
-                result.add("nping", "Probe", line[:160], "found")
+                result.add("nping", "Probe", line, "found")
         return result
 
 
@@ -325,12 +325,12 @@ class Hping3(ExternalTool):
         result.raw["stdout"] = stdout[:30000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"hping3 failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"hping3 failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             if line and ("len" in line or "flags" in line or "hop" in line):
-                result.add("hping3", "Response", line[:160], "found")
+                result.add("hping3", "Response", line, "found")
         return result
 
 
@@ -353,12 +353,12 @@ class Tcpdump(ExternalTool):
             result.raw["stdout"] = stdout[:30000]
             result.raw["stderr"] = stderr[:3000]
             if rc != 0 and not stdout.strip():
-                result.errors.append(f"tcpdump failed (rc={rc}): {stderr[:200]}")
+                result.errors.append(f"tcpdump failed (rc={rc}): {stderr}")
                 return result
-            for line in stdout.splitlines()[:200]:
+            for line in stdout.splitlines():
                 line = line.strip()
                 if line:
-                    result.add("tcpdump", "Packet", line[:160], "info")
+                    result.add("tcpdump", "Packet", line, "info")
             return result
         # Live capture — needs root / interactive
         result = ScanResult(target=target, module=f"external:{cls.name}")
@@ -383,15 +383,15 @@ class Whois(ExternalTool):
         result.raw["stdout"] = stdout[:50000]
         result.raw["stderr"] = stderr[:3000]
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"whois failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"whois failed (rc={rc}): {stderr}")
             return result
         for line in stdout.splitlines():
             line = line.strip()
             low = line.lower()
             if low.startswith("registrar:"):
-                result.add("whois", "Registrar", line.split(":", 1)[1].strip()[:160], "found")
+                result.add("whois", "Registrar", line.split(":", 1)[1].strip(), "found")
             elif low.startswith("name server:"):
-                result.add("whois", "Name Server", line.split(":", 1)[1].strip()[:160], "found")
+                result.add("whois", "Name Server", line.split(":", 1)[1].strip(), "found")
             elif "creation date" in low or "created" in low:
-                result.add("whois", "Creation Date", line.split(":", 1)[1].strip()[:160], "found")
+                result.add("whois", "Creation Date", line.split(":", 1)[1].strip(), "found")
         return result

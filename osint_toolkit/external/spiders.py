@@ -44,7 +44,7 @@ class GoSpider(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"gospider failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"gospider failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -52,11 +52,11 @@ class GoSpider(ExternalTool):
             if not line:
                 continue
             if "[url]" in line or "[link]" in line:
-                result.add("gospider", "URL", line.split("]")[-1].strip()[:160], "found")
+                result.add("gospider", "URL", line.split("]")[-1].strip(), "found")
             elif "[js]" in line:
-                result.add("gospider", "JS", line.split("]")[-1].strip()[:160], "info")
+                result.add("gospider", "JS", line.split("]")[-1].strip(), "info")
             elif "[form]" in line:
-                result.add("gospider", "Form", line.split("]")[-1].strip()[:160], "warn")
+                result.add("gospider", "Form", line.split("]")[-1].strip(), "warn")
 
         return result
 
@@ -96,7 +96,7 @@ class Hakrawler(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"hakrawler failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"hakrawler failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -139,12 +139,12 @@ class Kiterunner(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"kiterunner failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"kiterunner failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and "200" in line or "201" in line or "403" in line:
-                result.add("kiterunner", "Route", line[:160], "found")
+                result.add("kiterunner", "Route", line, "found")
 
         return result

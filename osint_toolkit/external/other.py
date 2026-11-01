@@ -36,7 +36,7 @@ class Chkrootkit(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"chkrootkit failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"chkrootkit failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -44,11 +44,11 @@ class Chkrootkit(ExternalTool):
             if not stripped:
                 continue
             if "INFECTED" in stripped or "detected" in stripped.lower():
-                result.add("chkrootkit", "Alert", stripped[:200], "error")
+                result.add("chkrootkit", "Alert", stripped, "error")
             elif "not infected" in stripped.lower() or "not found" in stripped.lower():
-                result.add("chkrootkit", "Check", stripped[:200], "info")
+                result.add("chkrootkit", "Check", stripped, "info")
             else:
-                result.add("chkrootkit", "Result", stripped[:200], "info")
+                result.add("chkrootkit", "Result", stripped, "info")
 
         return result
 
@@ -80,7 +80,7 @@ class Lynis(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"lynis failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"lynis failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -88,11 +88,11 @@ class Lynis(ExternalTool):
             if not stripped:
                 continue
             if "[WARNING]" in stripped or "[ERROR]" in stripped:
-                result.add("lynis", "Alert", stripped[:200], "error")
+                result.add("lynis", "Alert", stripped, "error")
             elif "[SUGGESTION]" in stripped:
-                result.add("lynis", "Suggestion", stripped[:200], "warn")
+                result.add("lynis", "Suggestion", stripped, "warn")
             else:
-                result.add("lynis", "Result", stripped[:200], "info")
+                result.add("lynis", "Result", stripped, "info")
 
         return result
 
@@ -124,14 +124,14 @@ class Unhide(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"unhide failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"unhide failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             stripped = line.strip()
             if not stripped:
                 continue
-            result.add("unhide", "Result", stripped[:200], "info")
+            result.add("unhide", "Result", stripped, "info")
 
         return result
 
@@ -205,14 +205,14 @@ class Macchanger(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"macchanger failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"macchanger failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             stripped = line.strip()
             if not stripped:
                 continue
-            result.add("macchanger", "MAC info", stripped[:200], "info")
+            result.add("macchanger", "MAC info", stripped, "info")
 
         return result
 
@@ -265,13 +265,13 @@ class Netmask(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"netmask failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"netmask failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             stripped = line.strip()
             if stripped:
-                result.add("netmask", "Mask", stripped[:200], "info")
+                result.add("netmask", "Mask", stripped, "info")
 
         return result
 

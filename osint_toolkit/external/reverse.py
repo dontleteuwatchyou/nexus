@@ -57,13 +57,13 @@ class Radare2(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"radare2 failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"radare2 failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and not line.startswith("["):
-                result.add("radare2", "Analysis", line[:160], "info")
+                result.add("radare2", "Analysis", line, "info")
 
         return result
 
@@ -96,13 +96,13 @@ class Rizin(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"rizin failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"rizin failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             line = line.strip()
             if line and not line.startswith("["):
-                result.add("rizin", "Analysis", line[:160], "info")
+                result.add("rizin", "Analysis", line, "info")
 
         return result
 
@@ -135,11 +135,11 @@ class GDB(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"gdb failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"gdb failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if line.strip():
-                result.add("gdb", "Output", line[:160], "info")
+                result.add("gdb", "Output", line, "info")
 
         return result

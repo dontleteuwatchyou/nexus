@@ -36,12 +36,12 @@ class Hashdeep(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"hashdeep failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"hashdeep failed (rc={rc}): {stderr}")
             return result
 
-        for line in stdout.splitlines()[:200]:
+        for line in stdout.splitlines():
             if line.strip():
-                result.add("hashdeep", "Hash", line[:200], "info")
+                result.add("hashdeep", "Hash", line, "info")
 
         return result
 
@@ -73,12 +73,12 @@ class Hashid(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"hashid failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"hashid failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
             if line.strip() and "]" in line:
-                result.add("hashid", "Type", line[:160], "found")
+                result.add("hashid", "Type", line, "found")
 
         return result
 
@@ -131,12 +131,12 @@ class Ssdeep(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"ssdeep failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"ssdeep failed (rc={rc}): {stderr}")
             return result
 
-        for line in stdout.splitlines()[:200]:
+        for line in stdout.splitlines():
             if line.strip():
-                result.add("ssdeep", "Fuzzy hash", line[:200], "info")
+                result.add("ssdeep", "Fuzzy hash", line, "info")
 
         return result
 
@@ -189,7 +189,7 @@ class Pipal(ExternalTool):
         result.raw["stderr"] = stderr[:8000]
 
         if rc != 0 and not stdout.strip():
-            result.errors.append(f"pipal failed (rc={rc}): {stderr[:200]}")
+            result.errors.append(f"pipal failed (rc={rc}): {stderr}")
             return result
 
         for line in stdout.splitlines():
@@ -197,8 +197,8 @@ class Pipal(ExternalTool):
             if not stripped:
                 continue
             if stripped.startswith("Total") or stripped.startswith("Top") or "passwords" in stripped.lower():
-                result.add("pipal", "Statistic", stripped[:200], "found")
+                result.add("pipal", "Statistic", stripped, "found")
             else:
-                result.add("pipal", "Result", stripped[:200], "info")
+                result.add("pipal", "Result", stripped, "info")
 
         return result
